@@ -1,166 +1,81 @@
-<div class="login-shell">
-  <header class="top-header">
-    <div class="brand">Ethereal Vault</div>
-    <div class="header-actions" aria-hidden="true">
-      <span class="material-symbols-outlined">account_balance_wallet</span>
-      <span class="material-symbols-outlined">security</span>
-    </div>
-  </header>
+<div class="container">
+  <div class="login-card">
+    <h1>Bienvenido</h1>
 
-  <main class="login-main">
-    <section class="login-wrap">
-      <div class="hero-block">
-        <div class="hero-icon">
-          <span class="material-symbols-outlined icon-filled">fingerprint</span>
-        </div>
-        <h1>Entrada Segura de Sesión</h1>
-        <p>Clúster de Autenticación Proyecto_Dev</p>
+    @if (hasWallet) {
+      <div class="siwe-section">
+        <p>Inicia sesión con tu wallet (MetaMask u otra)</p>
+        <button type="button" class="btn btn-siwe" (click)="onLoginWithSiwe()" [disabled]="siweLoading">
+          {{ siweLoading ? 'Conectando...' : 'Iniciar sesión con wallet (SIWE)' }}
+        </button>
       </div>
+      <hr>
+    }
 
-      <article class="login-card" aria-label="Métodos unificados de inicio de sesión">
-        <nav class="tab-nav" aria-label="Métodos de inicio de sesión">
-          <button
-            type="button"
-            class="tab-btn"
-            [class.active]="activeTab() === 'vault'"
-            (click)="setTab('vault')"
-          >
-            <span class="material-symbols-outlined">wallet</span>
-            Acceso a Bóveda
-          </button>
-          <button
-            type="button"
-            class="tab-btn"
-            [class.active]="activeTab() === 'identity'"
-            (click)="setTab('identity')"
-          >
-            <span class="material-symbols-outlined">badge</span>
-            Identidad (VC)
-          </button>
-          <button
-            type="button"
-            class="tab-btn"
-            [class.active]="activeTab() === 'siwe'"
-            (click)="setTab('siwe')"
-          >
-            <span class="material-symbols-outlined">shield_with_heart</span>
-            SIWE Directo
-          </button>
-        </nav>
+    <div class="login-tabs">
+      <button type="button" class="tab" [class.active]="!useVcLogin" (click)="setLoginMode(false)">
+        Wallet + Seed
+      </button>
+      <button type="button" class="tab" [class.active]="useVcLogin" (click)="setLoginMode(true)">
+        VC + DID
+      </button>
+    </div>
 
-        <div class="card-body">
-          @if (activeTab() === 'vault') {
-            <form class="form-layout" [formGroup]="vaultForm" (ngSubmit)="submitVault()">
-              <label class="field-row">
-                <span>Dirección de Wallet</span>
-                <input type="text" formControlName="walletAddress" placeholder="0x..." />
-                @if (vaultForm.get('walletAddress')?.hasError('required') && vaultForm.get('walletAddress')?.touched) {
-                  <small>La dirección de wallet es obligatoria.</small>
-                }
-              </label>
-
-              <label class="field-row">
-                <span>Frase semilla segura (12 o 24 palabras)</span>
-                <textarea rows="3" formControlName="seedPhrase" placeholder="Ingresa tu frase secreta de recuperación en orden..."></textarea>
-                @if (vaultForm.get('seedPhrase')?.hasError('required') && vaultForm.get('seedPhrase')?.touched) {
-                  <small>La frase semilla es obligatoria.</small>
-                }
-                @if (vaultForm.get('seedPhrase')?.hasError('minlength') && vaultForm.get('seedPhrase')?.touched) {
-                  <small>La frase semilla debe tener al menos 20 caracteres.</small>
-                }
-              </label>
-
-              <div class="warning-box">
-                <span class="material-symbols-outlined">gpp_maybe</span>
-                <p>Nunca compartas tu frase semilla. El equipo de Ethereal Vault nunca te pedirá esta información.</p>
-              </div>
-
-              <button type="submit" class="primary-btn">
-                Desbloquear Bóveda
-                <span class="material-symbols-outlined">arrow_forward</span>
-              </button>
-            </form>
-
-            <div class="divider">
-              <span>o continúa con</span>
-            </div>
-
-            <div class="quick-grid">
-              <button type="button" class="quick-btn">
-                <span class="material-symbols-outlined">account_balance_wallet</span>
-                MetaMask
-              </button>
-              <button type="button" class="quick-btn">
-                <span class="material-symbols-outlined">qr_code_scanner</span>
-                WalletConnect
-              </button>
-            </div>
-          }
-
-          @if (activeTab() === 'identity') {
-            <form class="form-layout" [formGroup]="vcForm" (ngSubmit)="submitVc()">
-              <label class="field-row">
-                <span>DID</span>
-                <input type="text" formControlName="did" placeholder="did:ethr:0x..." />
-                @if (vcForm.get('did')?.hasError('required') && vcForm.get('did')?.touched) {
-                  <small>El DID es obligatorio.</small>
-                }
-              </label>
-
-              <label class="field-row">
-                <span>Credencial Verificable (JWT / JSON)</span>
-                <textarea rows="4" formControlName="credential" placeholder="Pega tu VC aquí..."></textarea>
-                @if (vcForm.get('credential')?.hasError('required') && vcForm.get('credential')?.touched) {
-                  <small>La credencial es obligatoria.</small>
-                }
-              </label>
-
-              <button type="submit" class="primary-btn">
-                Validar Identidad
-                <span class="material-symbols-outlined">verified</span>
-              </button>
-            </form>
-          }
-
-          @if (activeTab() === 'siwe') {
-            <section class="siwe-panel">
-              <h2>Inicio de sesión con Ethereum</h2>
-              <p>Conecta tu wallet inyectada para continuar con la autenticación SIWE.</p>
-              <button type="button" class="primary-btn" (click)="loginSiwe()">
-                Continuar con SIWE
-                <span class="material-symbols-outlined">login</span>
-              </button>
-            </section>
+    @if (!useVcLogin) {
+      <p>Autenticación con dirección y frase semilla</p>
+      <form [formGroup]="form" (ngSubmit)="onSubmit()">
+        <div class="form-field">
+          <label class="form-label">Wallet Address:</label>
+          <input type="text" formControlName="walletAddress" placeholder="0x..." class="form-input">
+          @if (hasError('walletAddress', 'required')) {
+            <div class="error-text">La wallet address es requerida</div>
           }
         </div>
 
-        <footer class="card-footer">
-          <div class="status-row">
-            <span class="dot"></span>
-            <span>Estado de Ethereum Mainnet: Seguro</span>
-          </div>
-          <div class="footer-links">
-            <a routerLink="/register">Crear Cuenta</a>
-            <a href="#" (click)="$event.preventDefault()">Política de Privacidad</a>
-            <a href="#" (click)="$event.preventDefault()">Auditoría de Seguridad</a>
-          </div>
-        </footer>
-      </article>
-    </section>
-  </main>
+        <div class="form-field">
+          <label class="form-label">Seed Phrase (12 o 24 palabras):</label>
+          <textarea formControlName="seedPhrase" placeholder="palabra1 palabra2 palabra3 ..." class="form-input" rows="3"></textarea>
+          @if (hasError('seedPhrase', 'required')) {
+            <div class="error-text">La seed phrase es requerida</div>
+          }
+          @if (hasErrorMinLength('seedPhrase')) {
+            <div class="error-text">Mínimo 20 caracteres (12 o 24 palabras)</div>
+          }
+        </div>
 
-  <footer class="mobile-footer">
-    <button type="button" routerLink="/login">
-      <span class="material-symbols-outlined">login</span>
-      <span>Iniciar sesión</span>
-    </button>
-    <button type="button" routerLink="/register">
-      <span class="material-symbols-outlined">person_add</span>
-      <span>Registro</span>
-    </button>
-    <button type="button">
-      <span class="material-symbols-outlined">help_outline</span>
-      <span>Ayuda</span>
-    </button>
-  </footer>
+        <button type="submit" [disabled]="form.invalid" class="btn btn-primary">Iniciar Sesión</button>
+      </form>
+    } @else {
+      <p>Autenticación con credencial verificable (VC) y DID</p>
+      <form [formGroup]="formVc" (ngSubmit)="onSubmitVc()">
+        <div class="form-field">
+          <label class="form-label">DID (did:ethr:0x...):</label>
+          <input type="text" formControlName="did" placeholder="did:ethr:0x..." class="form-input">
+          @if (hasErrorVc('did', 'required')) {
+            <div class="error-text">El DID es requerido</div>
+          }
+          @if (hasErrorVc('did', 'pattern')) {
+            <div class="error-text">Formato: did:ethr:0x + 40 caracteres hex</div>
+          }
+        </div>
+
+        <div class="form-field">
+          <label class="form-label">Verifiable Credential (JSON o JWT):</label>
+          <textarea formControlName="vc" placeholder="Pega aquí tu VC (JSON con proof o JWT)..." class="form-input" rows="6"></textarea>
+          @if (hasErrorVc('vc', 'required')) {
+            <div class="error-text">La credencial verificable es requerida</div>
+          }
+        </div>
+
+        <button type="submit" [disabled]="formVc.invalid" class="btn btn-primary">Iniciar sesión con VC</button>
+      </form>
+    }
+
+    @if (error) {
+      <div class="error-box">{{ error }}</div>
+    }
+
+    <hr>
+    <p class="register-link">¿No tienes cuenta? <a routerLink="/register">Regístrate aquí</a></p>
+  </div>
 </div>

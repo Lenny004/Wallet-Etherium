@@ -56,6 +56,26 @@
 	--font-headline: 'Space Grotesk', sans-serif;
 	--font-body: 'Manrope', sans-serif;
 	--font-label: 'Inter', sans-serif;
+
+	--primary-color: var(--color-primary-container);
+	--primary-color-hv: var(--color-inverse-primary);
+	--black: var(--color-on-surface);
+	--bgcolor: linear-gradient(135deg, var(--color-surface-dim) 0%, var(--color-surface) 50%, var(--color-surface-container-high) 100%);
+	--white: var(--color-surface-container-lowest);
+	--input: var(--color-surface-container-highest);
+	--input-border: var(--color-outline-variant);
+	--input-focus: var(--color-primary);
+	--error-color: var(--color-error);
+	--card-overlay: color-mix(in srgb, var(--color-surface-container-low) 90%, transparent);
+	--border-light: var(--color-outline-variant);
+	--text-muted: var(--color-on-surface-variant);
+	--font-family: var(--font-body);
+	--shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+	--radius: 1.2rem;
+	--xs: 1rem;
+	--sm: 1.2rem;
+	--md: 1.6rem;
+	--lg: 1.8rem;
 }
 
 * {
@@ -74,6 +94,65 @@ body {
 	font-family: var(--font-body);
 	color: var(--color-on-background);
 	background: var(--color-background);
+}
+
+.container {
+	max-width: 120rem;
+	margin: 0 auto;
+	padding: 0 2rem;
+}
+
+.btn-primary {
+	color: var(--white);
+	border: none;
+	padding: 1.2rem 2.4rem;
+	border-radius: 0.4rem;
+	cursor: pointer;
+}
+
+.btn {
+	font-size: var(--xs);
+	font-weight: 600;
+	transition: background-color 0.3s ease;
+}
+
+.btn-primary:disabled {
+	background-color: var(--primary-color);
+	cursor: not-allowed;
+}
+
+.form-field {
+	margin-bottom: 1.6rem;
+}
+
+.form-label {
+	display: block;
+	margin-bottom: 0.4rem;
+	font-weight: 500;
+	font-size: var(--xs);
+}
+
+.form-input {
+	width: 100%;
+	padding: 1.2rem;
+	border: 1px solid var(--input-border);
+	font-size: var(--sm);
+	background-color: var(--input);
+	color: var(--black);
+	border-radius: 0.5rem;
+	transition: border-color 0.4s ease, box-shadow 0.4s ease;
+}
+
+.form-input:focus {
+	outline: none;
+	border-color: var(--input-focus);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--input-focus) 35%, transparent);
+}
+
+.error-text {
+	color: var(--error-color);
+	font-size: var(--xs);
+	margin-top: 0.4rem;
 }
 
 .material-symbols-outlined {

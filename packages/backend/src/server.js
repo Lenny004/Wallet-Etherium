@@ -138,6 +138,39 @@ function extractSiweParts(message) {
   };
 }
 
+function normalizeVcForUser(user, vcText) {
+  try {
+    const parsed = JSON.parse(vcText);
+    const credentialSubject = parsed?.credentialSubject;
+    if (!credentialSubject || typeof credentialSubject !== 'object') {
+      return null;
+    }
+
+    const did = typeof credentialSubject.id === 'string' ? credentialSubject.id : '';
+    const walletAddress = typeof credentialSubject.walletAddress === 'string' ? credentialSubject.walletAddress : '';
+    const issuer = typeof parsed?.issuer === 'string' ? parsed.issuer : '';
+
+    if (!did || !walletAddress || !issuer) {
+      return null;
+    }
+
+    const normalizedWalletAddress = getAddress(walletAddress);
+    const normalizedUserAddress = getAddress(user.walletAddress);
+
+    if (did !== user.did || issuer !== user.did || normalizedWalletAddress !== normalizedUserAddress) {
+      return null;
+    }
+
+    return {
+      did,
+      issuer,
+      walletAddress: normalizedWalletAddress
+    };
+  } catch {
+    return null;
+  }
+}
+
 const app = express();
 
 app.use(helmet());
@@ -275,7 +308,12 @@ app.post('/api/auth/login-vc', async (req, res, next) => {
       return res.status(401).json({ message: 'No se pudo verificar la credencial.' });
     }
 
-    const vcMatches = vc === user.vc || vc.includes(did);
+    const incomingVc = normalizeVcForUser(user, vc);
+    const storedVc = normalizeVcForUser(user, user.vc);
+    const vcMatches = Boolean(incomingVc && storedVc) &&
+      incomingVc.did === storedVc.did &&
+      incomingVc.issuer === storedVc.issuer &&
+      incomingVc.walletAddress === storedVc.walletAddress;
     if (!vcMatches) {
       return res.status(401).json({ message: 'No se pudo verificar la credencial.' });
     }

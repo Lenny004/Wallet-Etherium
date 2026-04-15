@@ -1,6 +1,12 @@
 {
   "name": "wallet-etherium",
   "private": true,
+  "scripts": {
+    "frontend:start": "npm --workspace packages/frontend run start",
+    "frontend:build": "npm --workspace packages/frontend run build",
+    "backend:dev": "npm --workspace packages/backend run dev",
+    "backend:start": "npm --workspace packages/backend run start"
+  },
   "workspaces": [
     "packages/*"
   ]
