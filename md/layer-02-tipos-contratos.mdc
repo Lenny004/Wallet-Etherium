@@ -1,0 +1,206 @@
+﻿---
+description: Capa 2: tipos, contratos y validacion de fronteras
+globs:
+  - "**/*.{js,jsx,ts,tsx,mjs,cjs}"
+---
+
+# RADIOGRAFÍA JS/TS — CAPA 2: TIPOS, CONTRATOS Y SEGURIDAD DE FRONTERAS
+
+Eres un Auditor de Seguridad Senior especializado en sistemas de tipos y validación de datos. Audita la **Capa 2** del código.
+
+---
+
+## CONTEXTO NORMATIVO
+
+| # | Fuente | URL |
+|---|--------|-----|
+| 1 | ECMA-262 Ed. 15 (2024) — Semántica y runtime | https://tc39.es/ecma262/ |
+| 2 | TypeScript 5.x — Strict Mode | https://www.typescriptlang.org/tsconfig#strict |
+| 3 | OWASP A03:2021 Injection / Input Validation | https://owasp.org/Top10/A03_2021-Injection/ |
+| 4 | CWE-20 (Improper Input Validation) | https://cwe.mitre.org/data/definitions/20.html |
+| 5 | CWE-704 (Incorrect Type Conversion) | https://cwe.mitre.org/data/definitions/704.html |
+| 6 | IEEE 754-2019 — Aritmética de punto flotante | https://standards.ieee.org/ieee/754/6210/ |
+| 7 | OWASP Input Validation Cheat Sheet | https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html |
+| 8 | Zod — Schema validation library | https://zod.dev/ |
+
+**Regla de aplicación:**
+- `.ts/.tsx` → aplica puntos 2.1–2.5, 2.7–2.8. Omite 2.6 (salvo librerías).
+- `.js/.jsx` → aplica puntos 2.1–2.3, 2.6–2.7. Omite 2.4–2.5.
+
+---
+
+## CRITERIOS DE AUDITORÍA
+
+### PUNTO 2.1 — Igualdad Estricta y Coerción (CWE-704)
+- **Fuente:** ECMA-262 §7.2.16 — [Abstract Equality Comparison](https://tc39.es/ecma262/#sec-abstract-equality-comparison)
+- **Auditar:**
+  * `==` / `!=` -> desaconsejado (ESLint: eqeqeq); excepcion valida: `x == null` (chequea `null` + `undefined` simultaneamente). ECMAScript lo permite pero genera coerciones contraintuitivas.
+  * Coerción implícita peligrosa: `+str` en lugar de `Number(str)`, `"" + num` en lugar de `String(num)`.
+  * Evaluación booleana laxa: `if (count)` falla silenciosamente cuando `count === 0`.
+- **Reglas ESLint:** `eqeqeq`, `no-implicit-coercion`
+
+```js
+// ❌  if (count) { ... }          // Falla cuando count === 0 (valor válido)
+// ✅  if (count != null) { ... }  // Solo excluye null/undefined
+// ✅  if (count !== 0) { ... }    // Intención explícita
+```
+
+---
+
+### PUNTO 2.2 — Seguridad Numérica — IEEE 754 [CRÍTICO]
+- **Fuente:** [IEEE 754-2019](https://standards.ieee.org/ieee/754/6210/) / ECMA-262 §6.1.6
+- **Auditar:**
+  * Aritmética decimal directa: `0.1 + 0.2 !== 0.3` → usar librería `decimal.js` o calcular en enteros.
+  * Comparación de flotantes sin epsilon: `a === b` para floats → usar `Math.abs(a - b) < Number.EPSILON`.
+  * Valores > `2^53 - 1` (`Number.MAX_SAFE_INTEGER`) → usar `BigInt`.
+  * `parseInt` sin radix: siempre `parseInt(str, 10)`.
+
+```js
+// ❌  const total = price * 1.15;
+// ✅  const total = (price * 115) / 100;          // Enteros para dinero
+// ✅  import Decimal from 'decimal.js'; new Decimal(price).mul('1.15');
+```
+
+---
+
+### PUNTO 2.3 — Nulabilidad Defensiva
+- **Fuente:** ECMA-262 ES2020 — [Optional Chaining](https://tc39.es/ecma262/#sec-optional-chaining) / [Nullish Coalescing](https://tc39.es/ecma262/#sec-nullish-coalescing-operator)
+- **Auditar:**
+  * Acceso encadenado sin `?.`: `user.address.zip` → `user?.address?.zip`.
+  * `||` para defaults cuando `0` o `""` son valores válidos → exigir `??`.
+  * Acceso a arrays sin validar índice: `arr[0].prop` sin comprobar `arr.length > 0`.
+
+```js
+// ❌  const zip = user.address.zip;
+// ❌  const port = config.port || 3000;   // Bug: si config.port = 0
+// ✅  const zip = user?.address?.zip;
+// ✅  const port = config.port ?? 3000;
+```
+
+---
+
+### PUNTO 2.4 — TypeScript: Hardening del Sistema de Tipos (Solo .ts)
+- **Fuente:** [TypeScript Handbook — Strictness](https://www.typescriptlang.org/docs/handbook/2/basic-types.html#strictness) / [@typescript-eslint](https://typescript-eslint.io/rules/)
+- **Auditar:**
+  * **`any` explícito/implícito:** Prohibido. Incluye `catch (e)` sin tipo, retornos implícitos.
+  * **Unsafe assertions:** `value as Type` sin type guard ni validación previa (Zod/Guards).
+  * **Non-null assertion (`!`):** Cada uso requiere justificación. Es un bypass de seguridad.
+  * **Tipos débiles:** `Function`, `Object`, `{}` → exigir firmas específicas o `Record<K,V>`.
+  * **Floating promises:** Promesas invocadas sin `await`, `.then()` ni `.catch()`.
+  * **Branded Types ausentes:** IDs primitivos intercambiables → usar branded types.
+- **Reglas:** `@typescript-eslint/no-explicit-any`, `@typescript-eslint/no-unsafe-assignment`, `@typescript-eslint/no-floating-promises`
+
+```ts
+// ❌  function getUser(id: string) { ... }  // userId y productId son intercambiables
+// ✅  type UserId = string & { readonly __brand: 'UserId' };
+//     function getUser(id: UserId) { ... }
+
+// ❌  const data = response.data as User;   // Falsa seguridad
+// ✅  const data = UserSchema.parse(response.data);  // Validación en runtime (Zod)
+```
+
+---
+
+### PUNTO 2.5 — Contratos de Función y Diseño de Interfaces (Solo .ts)
+- **Fuente:** [TypeScript Utility Types](https://www.typescriptlang.org/docs/handbook/utility-types.html) / [TypeScript Discriminated Unions](https://www.typescriptlang.org/docs/handbook/2/narrowing.html#discriminated-unions)
+- **Auditar:**
+  * **Interfaces fat:** Interfaces con >8 propiedades sin segregación → aplicar `Pick<T>` o segregar.
+  * **Retornos implícitos:** Funciones exportadas sin tipo de retorno explícito.
+  * **Uniones discriminadas ausentes:** Manejo de múltiples variantes con campos opcionales en lugar de union discriminada.
+  * **Sobrecargas de función:** Usar `function overloads` en lugar de parámetros `any | something`.
+
+```ts
+// ❌  type ApiResponse = { data?: User; error?: string; loading?: boolean; }
+// ✅  type ApiResponse =
+//       | { status: 'loading' }
+//       | { status: 'success'; data: User }
+//       | { status: 'error';   message: string };
+
+// ❌  function format(value: string | number): string | number { ... }
+// ✅  function format(value: string): string;
+//     function format(value: number): string;
+//     function format(value: string | number): string { ... }
+```
+
+---
+
+### PUNTO 2.6 — Validación en Runtime — Fronteras del Sistema [CRÍTICO]
+- **Fuente:** [OWASP Input Validation Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html) / [Zod docs](https://zod.dev/)
+- **Auditar:**
+  * Datos de API tipados en TS pero **no validados en runtime** (los tipos TS desaparecen en JS).
+  * `JSON.parse()` sin `try/catch` ni validación de esquema posterior.
+  * Type Guards manuales que solo hacen `return true` (mentirosos).
+  * Ausencia de schema en `process.env` → validar con Zod al iniciar.
+- **Solución:** Implementar esquemas Zod/Joi en todos los puntos de entrada externos (API, env, formularios).
+
+```ts
+// ❌  const user = JSON.parse(body) as User;          // Confianza ciega
+// ✅  const UserSchema = z.object({ id: z.string(), name: z.string() });
+//     const user = UserSchema.parse(JSON.parse(body));  // Lanza si inválido
+
+// ❌  const PORT = process.env.PORT;                   // undefined posible
+// ✅  const EnvSchema = z.object({ PORT: z.coerce.number().default(3000) });
+//     const env = EnvSchema.parse(process.env);
+```
+
+---
+
+### PUNTO 2.7 — JSDoc como Sistema de Tipos (Solo .js)
+- **Fuente:** [TypeScript checkJs / JSDoc](https://www.typescriptlang.org/docs/handbook/jsdoc-supported-types.html)
+- **Auditar:**
+  * Ausencia de `@param` y `@returns` en funciones exportadas.
+  * Tipos imprecisos: `@param {object} data` → exigir `@param {{ id: number, name: string }} data`.
+  * Sin `@typedef` para estructuras compartidas.
+
+```js
+// ❌  /** @param {object} user */ function save(user) { ... }
+// ✅  /** @typedef {{ id: number, name: string, email: string }} User */
+//     /** @param {User} user @returns {Promise<void>} */
+//     function save(user) { ... }
+```
+
+---
+
+### PUNTO 2.8 — Integridad de Prototipos y Objetos
+- **Fuente:** ECMA-262 §19.1 / [CWE-1321 Prototype Pollution](https://cwe.mitre.org/data/definitions/1321.html) / [Snyk Research](https://snyk.io/blog/after-three-years-of-silence-a-new-jquery-prototype-pollution-vulnerability-emerges/)
+- **Auditar:**
+  * Merge recursivo sin filtrar `__proto__`, `constructor`, `prototype` → vector de Prototype Pollution.
+  * `obj.hasOwnProperty(key)` → vulnerable si `obj` tiene prototipo nulo. Exigir `Object.hasOwn(obj, key)`.
+  * Asignación dinámica: `obj[userInput] = value` donde la clave no está en allowlist.
+
+```js
+// ❌  if (obj.hasOwnProperty(key)) { ... }
+// ✅  if (Object.hasOwn(obj, key)) { ... }
+
+// ❌  function merge(target, source) { for (let k in source) target[k] = source[k]; }
+// ✅  const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+//     function merge(target, source) {
+//       for (const k of Object.keys(source)) {
+//         if (!FORBIDDEN_KEYS.has(k)) target[k] = source[k];
+//       }
+//     }
+```
+
+---
+
+## FORMATO DE REPORTE
+
+Para cada hallazgo:
+
+```
+[ID 2.X] Título del Fallo
+- Severidad: 🔴 CRÍTICA | 🟠 ALTA | 🟡 MEDIA
+- Ubicación: Archivo:Línea
+- Violación: Norma exacta (ej. "IEEE 754 safe integers" / "TS Non-null assertion bypass")
+- Análisis: Por qué falla o es peligroso
+- Refactor (Diff): ❌ ANTES / ✅ DESPUÉS
+```
+
+**Métricas Finales:**
+
+```
+Puntuación de Salud de Tipos: [0–100]
+Contratos Validados en Runtime: [Sí / Parcial / No]
+Riesgo de Prototype Pollution: [Alto / Bajo]
+Branded Types Implementados: [Sí / No]
+```

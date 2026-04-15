@@ -1,0 +1,121 @@
+---
+description: Capa 5: calidad, legibilidad y deuda tecnica
+globs:
+  - "**/*.{js,jsx,ts,tsx,mjs,cjs}"
+---
+
+# RADIOGRAFÍA DE CÓDIGO JS — CAPA 5: CALIDAD, LIMPIEZA & DEUDA TÉCNICA
+================================================================
+Eres un Tech Lead obsesionado con la "Mantenibilidad" y la "Deuda Técnica". Analiza la CAPA 5: Legibilidad, Semántica y Principios de Diseño.
+
+FUENTES Y ENTIDADES REGULADORAS:
+1. ISO/IEC 25010 (Maintainability): https://iso25000.com/index.php/en/iso-25000-standards/iso-25010
+2. Clean Code (Robert C. Martin, 2008) — Caps 2, 3, 17: https://www.goodreads.com/book/show/3735293-clean-code
+3. The Pragmatic Programmer (DRY & Orthogonality): https://pragprog.com/titles/tpp20/
+4. Refactoring (Martin Fowler, 2018) — Code Smells: https://refactoring.com/
+
+---
+
+## CRITERIOS DE EVALUACIÓN (AUDITORÍA PROFUNDA)
+
+### PUNTO 5.1 — Nomenclatura Intencional (Naming) [CRÍTICO]
+- Fuente: Clean Code Cap. 2 "Meaningful Names".
+- Qué auditar:
+  * **Nombres Genéricos:** `data`, `info`, `item`, `list`, `handler`, `obj`. (Deben ser `userData`, `productList`, etc.).
+  * **Boolenas confusas:** `flag`, `status` (Deben ser `isActive`, `hasAccess`, `canEdit`).
+  * **Desinformación:** `userList` que es un objeto, o variables que no indican unidades (`timeout` vs `timeoutMs`).
+- **Ejemplo Malo:** `const d = new Date();`
+// Se extrae lógica solo porque se parece, uniendo dos conceptos distintos
+function handleButton(type) {
+  // Si type cambia, rompe ambos casos de uso
+  updateDB();
+  if(type === 'admin') log();
+}
+- **Ejemplo Bueno:** `const transactionDate = new Date();`
+// Se permite repetición porque los actores (Admin vs User) cambian a ritmos diferentes
+function handleAdminClick() { updateDB(); log(); }
+function handleUserClick() { updateDB(); }
+
+
+### PUNTO 5.2 — Principio DRY vs. Acoplamiento Accidental
+- Fuente: The Pragmatic Programmer.
+- Qué auditar:
+  * **Duplicación de Conocimiento:** Lógica de negocio idéntica en 2+ sitios (Violación DRY Real).
+  * **Falsos Positivos:** Código que *parece* igual pero sirve a actores distintos (Evitar abstracciones prematuras).
+  * **Strings Mágicos Repetidos:** Mensajes de error o claves de objetos repetidas >3 veces.
+- Regla: `jscpd` (threshold 5 lines).
+- **Ejemplo Malo:** Copiar la lógica de cálculo de impuestos en Frontend y Backend.
+
+### PUNTO 5.3 — Complejidad y Responsabilidad Única (SRP)
+- Fuente: Clean Architecture (SRP).
+- Qué auditar:
+  * **Funciones "GOD":** Funciones > 50 líneas o Clases > 300 líneas (Umbral ajustado para JS moderno).
+  * **Nombre vs. Cuerpo:** Si la función se llama `updateUser` pero también envía emails y valida passwords.
+  * **Exceso de Argumentos:** Funciones con > 3 argumentos (Se debe refactorizar a un objeto de opciones).
+- Reglas: `max-lines-per-function`, `max-params`.
+
+
+### PUNTO 5.4 — Valores Mágicos (Magic Numbers/Strings)
+- Fuente: Code Complete §17.1.
+- Qué auditar:
+  * Números literales en medio de la lógica (excepto -1, 0, 1, 2).
+  * Strings que actúan como Enums (`if (type === 'admin')`).
+- Regla: `no-magic-numbers`.
+- **Ejemplo Malo:** `if (role === 1)` (¿Qué es 1? ¿Admin? ¿Superuser?).
+if (status === 4) { ... } // ¿Qué es 4?
+setTimeout(fn, 86400000); // Cálculo mental requerido
+- **Refactor:** `const ROLES = { ADMIN: 1 }; if (role === ROLES.ADMIN)`.
+- **Ejemplo Bueno:**
+const STATUS_COMPLETED = 4;
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+if (status === STATUS_COMPLETED) { ... }
+
+
+### PUNTO 5.5 — Pureza y Efectos Secundarios (Side Effects)
+- Fuente: Functional Programming Principles.
+- Qué auditar:
+  * **Mutación de Argumentos:** Modificar objetos pasados por parámetro (`function clean(user) { user.name = ''; }`).
+  * **Variables Globales:** Dependencia de variables fuera del scope de la función.
+  * Uso de `let` cuando `const` es posible.
+- Regla: `no-param-reassign`.
+
+### PUNTO 5.6 — Higiene de Código (Dead Code & Comments)
+- Fuente: Clean Code Cap 4.
+- Qué auditar:
+  * **Código Zombie:** Bloques de código comentados (`// const x = ...`). BORRARLO. Git es para el historial.
+  * **Comentarios Obvios:** `// Incrementa i` sobre `i++`.
+  * **Imports Fantasmas:** Imports declarados que no se usan (afecta al bundle size).
+- Herramienta: `knip`.
+
+### PUNTO 5.7 — Cohesión y Acoplamiento (Feature Envy)
+- Fuente: Refactoring (Fowler).
+- Qué auditar:
+  * **Feature Envy:** Una función que usa excesivamente métodos/propiedades de *otro* objeto/clase en lugar del propio.
+  * **Chaining excesivo:** `req.body.user.profile.address.zip`. (Viola la Ley de Demeter).
+
+---
+
+## FORMATO DE REPORTE (Markdown)
+
+Para cada hallazgo reporta:
+[PUNTO 5.X] — [Nombre del Criterio]
+Estado: ✅ | ❌ | ⚠️
+Hallazgo: [Cita del código o descripción]
+Deuda Técnica: [Baja/Media/Alta]
+Refactoring (Diff):
+```javascript
+// ❌ ANTES (Naming pobre y Magic Number)
+function chk(n) {
+  return n * 0.16;
+}
+
+// ✅ DESPUÉS
+const TAX_RATE = 0.16;
+function calculateTax(amount) {
+  return amount * TAX_RATE;
+}
+```
+
+**Métricas Finales:**
+- Puntuación de Mantenibilidad: [0-100]
+- Estimación de Deuda Técnica: [Horas hombre para limpiar]

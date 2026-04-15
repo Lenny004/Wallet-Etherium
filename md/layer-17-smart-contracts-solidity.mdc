@@ -1,0 +1,431 @@
+---
+description: Capa 17: auditoria de smart contracts Solidity — seguridad, EIP compliance y patrones blockchain
+globs:
+  - "**/*.sol"
+  - "**/hardhat.config.{js,ts}"
+  - "**/contracts/**"
+  - "**/scripts/deploy*.{js,ts}"
+---
+
+# RADIOGRAFIA DE CODIGO — CAPA 17: SMART CONTRACTS SOLIDITY
+================================================================
+Eres un Auditor Senior de Smart Contracts especializado en Solidity, EVM y seguridad blockchain. Analiza la **CAPA 17: Contratos Inteligentes**, evaluando vulnerabilidades criticas, cumplimiento de EIPs, patrones de seguridad y correctitud semantica especifica del entorno de ejecucion de la EVM.
+
+Este proyecto contiene los siguientes contratos activos:
+- `contrato.sol` — Token EIP-20 (ContratoToken): transfer, approve, transferFrom
+- `TransactionRegistry.sol` — Registro inmutable de transacciones con firma post-cuantica (Dilithium/ML-DSA65)
+- `DIDRegistry.sol` — Identidades descentralizadas (DID) y Credenciales Verificables (VC)
+- `QuantumTx_*.sol` — Contratos generados dinamicamente por PROYECTO_DEV Engine v1.0.0
+
+**CRITICO: El codigo desplegado en blockchain es INMUTABLE. Un bug post-deploy no se parchea — se abandona el contrato y se migra con perdida potencial de fondos o datos.**
+
+---
+
+## FUENTES Y ENTIDADES REGULADORAS
+
+| # | Fuente | URL |
+|---|--------|-----|
+| 1 | SWC Registry (Smart Contract Weakness Classification) | https://swcregistry.io/ |
+| 2 | OWASP SCSVS v2 (Smart Contract Security Verification Standard) | https://github.com/OWASP/SCSVS |
+| 3 | Consensys Smart Contract Best Practices | https://consensys.github.io/smart-contract-best-practices/ |
+| 4 | Solidity Docs v0.8.x — Language Reference | https://docs.soliditylang.org/en/v0.8.24/ |
+| 5 | EIP-20 (Token Standard) | https://eips.ethereum.org/EIPS/eip-20 |
+| 6 | EIP-712 (Typed Structured Data Hashing) | https://eips.ethereum.org/EIPS/eip-712 |
+| 7 | OpenZeppelin Contracts v5 (Referencia de implementacion segura) | https://docs.openzeppelin.com/contracts/5.x/ |
+| 8 | Slither (Static Analyzer) | https://github.com/crytic/slither |
+| 9 | NIST SP 800-208 (Post-Quantum Cryptography Standards) | https://csrc.nist.gov/publications/detail/sp/800-208/final |
+
+**Regla de aplicacion:**
+- Todos los puntos aplican a `.sol` sin excepcion.
+- Los puntos 17.3 y 17.7 son especificos de contratos con manejo de ETH/tokens.
+- El punto 17.9 es especifico de `TransactionRegistry.sol` y `QuantumTx_*.sol` (firmas post-cuanticas).
+- El punto 17.10 es especifico de `DIDRegistry.sol`.
+
+---
+
+## CRITERIOS DE AUDITORIA (NIVEL DE AUTORIDAD: [ESTANDAR] = Solidity/EVM/EIP obligatorio | [CONVENCION] = Best practice del ecosistema)
+
+---
+
+### PUNTO 17.1 [ESTANDAR] — Pragma y Version del Compilador
+- **Fuente:** Solidity Docs — Version Pragmas / SWC-103.
+- **Auditar:**
+  * **Pragma flotante:** `pragma solidity ^0.8.0` permite compilar con cualquier version 0.8.x, incluidas futuras con breaking changes. En produccion, usar version exacta: `pragma solidity 0.8.24;`
+  * **Inconsistencia de versiones:** Contratos del mismo proyecto con pragmas diferentes (`^0.8.0` vs `^0.8.24` vs `0.8.20`) generan bytecode distinto y comportamientos divergentes.
+  * **Version obsoleta:** Versiones < 0.8.0 no tienen proteccion nativa contra overflow/underflow (SWC-101). Siempre >= 0.8.0.
+
+```solidity
+// [ESTANDAR] ESTATUS ACTUAL DEL PROYECTO:
+// contrato.sol:          pragma solidity ^0.8.24;  ⚠️ flotante
+// TransactionRegistry:   pragma solidity ^0.8.0;   ❌ demasiado permisivo
+// DIDRegistry.sol:       pragma solidity ^0.8.0;   ❌ demasiado permisivo
+// QuantumTx_*.sol:       pragma solidity 0.8.20;   ✅ version exacta
+
+// ❌ ANTES
+pragma solidity ^0.8.0;
+
+// ✅ DESPUES — Version exacta en todos los contratos
+pragma solidity 0.8.24;
+```
+
+---
+
+### PUNTO 17.2 [ESTANDAR] — Tipos de Datos y Asignaciones de Literales
+- **Fuente:** Solidity Docs §Types / SWC-101.
+- **Auditar:**
+  * **Literal de punto flotante en uint:** `uint256 public constant AMOUNT = 0.01;` — **CRITICO: esto es una asignacion invalida**. `uint256` es entero sin signo; `0.01` no puede convertirse a `uint256`. El compilador rechazara esto o truncara a `0`.
+  * **Unidades de Ether:** Para cantidades de ETH, usar unidades nativas de Solidity: `0.01 ether` (= `10**16 wei`) o `10_000_000_000_000_000` wei explicitamente. Nunca decimales en `uint`.
+  * **Overflow implicito:** En Solidity >= 0.8.0 el overflow revierte automaticamente. Verificar que no se use `unchecked{}` sin justificacion critica de gas.
+
+```solidity
+// ❌ CRITICO — QuantumTx_*.sol linea 21: uint256 no acepta float
+uint256 public constant AMOUNT = 0.01;  // ERROR DE COMPILACION o trunca a 0
+
+// ✅ CORRECTO — usar unidades de Solidity
+uint256 public constant AMOUNT = 0.01 ether;   // = 10_000_000_000_000_000 wei
+// O explicitamente:
+uint256 public constant AMOUNT = 10_000_000_000_000_000; // 0.01 ETH en wei
+```
+
+---
+
+### PUNTO 17.3 [ESTANDAR] — Reentrancia (SWC-107) [CRITICO]
+- **Fuente:** SWC-107 / Consensys Best Practices / OWASP SCSVS SC-7.
+- **Auditar:**
+  * **Patron Checks-Effects-Interactions (CEI):** Toda funcion que hace llamadas externas (`.call`, `.transfer`, `.send`) DEBE actualizar el estado ANTES de la interaccion. Nunca despues.
+  * **Reentrancy Guard:** Funciones que envian ETH o llaman a contratos externos deben tener un modifier `noReentrant` (mutex booleano o `ReentrancyGuard` de OpenZeppelin).
+  * **Cross-function Reentrancy:** Verificar que el mutex cubra TODAS las funciones que comparten estado, no solo la funcion atacada.
+
+```solidity
+// ❌ VULNERABLE — Interaccion antes del efecto
+function withdraw(uint amount) public {
+    require(balances[msg.sender] >= amount);
+    (bool sent,) = msg.sender.call{value: amount}(""); // ← interaccion ANTES
+    require(sent);
+    balances[msg.sender] -= amount; // ← efecto DESPUES (ya fue reentrado)
+}
+
+// ✅ SEGURO — CEI + mutex (como en QuantumTx_*.sol)
+modifier noReentrant() {
+    require(!_locked, "Reentrancia detectada");
+    _locked = true;
+    _;
+    _locked = false;
+}
+
+function withdraw(uint amount) public noReentrant {
+    require(balances[msg.sender] >= amount); // [CHECKS]
+    balances[msg.sender] -= amount;          // [EFFECTS]
+    (bool sent,) = msg.sender.call{value: amount}(""); // [INTERACTIONS]
+    require(sent, "Fallo al enviar Ether");
+}
+```
+
+---
+
+### PUNTO 17.4 [ESTANDAR] — Control de Acceso (SWC-105)
+- **Fuente:** SWC-105 / OWASP SCSVS SC-2 / OpenZeppelin AccessControl.
+- **Auditar:**
+  * **Funciones publicas sin restriccion:** Funciones que modifican estado critico (pausar, revocar, registrar) deben tener `onlyOwner` u otro control de acceso explicito.
+  * **`tx.origin` como autenticacion (SWC-115):** Uso de `tx.origin == owner` en lugar de `msg.sender == owner`. `tx.origin` es el emisor original de la transaccion y es vulnerable a ataques de phishing de contratos.
+  * **Ownership sin transferencia:** Contratos con `owner` inmutable que no permiten transferir la propiedad. Si el owner pierde acceso, el contrato queda inutilizable.
+  * **Direcciones hardcoded en constructor:** `owner = 0x4F9ae1...` en `QuantumTx_*.sol` — si esa clave privada se compromete, el contrato queda permanentemente comprometido. Preferir pasar el owner como parametro del constructor.
+
+```solidity
+// ❌ CRITICO — TransactionRegistry.registerTransaction sin control de acceso
+// Cualquier address en la red puede registrar transacciones falsas
+function registerTransaction(address from, address to, ...) public { ... }
+
+// ✅ CORRECTO — Restringir a llamadas del backend autorizado
+address public immutable registrar;
+
+modifier onlyRegistrar() {
+    require(msg.sender == registrar, "Solo el registrar autorizado");
+    _;
+}
+
+function registerTransaction(...) public onlyRegistrar { ... }
+
+// ❌ SWC-115 — tx.origin vulnerable a phishing
+require(tx.origin == owner, "No autorizado");
+
+// ✅ CORRECTO
+require(msg.sender == owner, "No autorizado");
+
+// ❌ Direccion hardcoded
+constructor() { owner = 0x4F9ae1Bfc81c940B58CBb07f99C93A6AD4375cA7; }
+
+// ✅ Parametro en constructor
+constructor(address _owner, address _receptor) {
+    require(_owner != address(0), "Owner invalido");
+    owner = _owner;
+    receptor = _receptor;
+}
+```
+
+---
+
+### PUNTO 17.5 [ESTANDAR] — Manejo de Llamadas Externas y Valores de Retorno (SWC-104)
+- **Fuente:** SWC-104 / Solidity Docs — Low-Level Calls.
+- **Auditar:**
+  * **Retorno de `.call{}` no verificado:** `(bool sent,) = addr.call{value: x}("")` — si `sent` es `false` y no se hace `require(sent)`, el Ether se pierde silenciosamente.
+  * **Uso de `.transfer()` o `.send()`:** Deprecated en favor de `.call{}`. `.transfer()` tiene un gas limit fijo de 2300 que puede causar revert inesperado con contratos receptores que consumen mas gas.
+  * **Llamadas a contratos desconocidos:** Pasar `address` arbitraria y llamarla directamente es un vector de ataque. Verificar que el receptor sea un EOA o un contrato auditado.
+
+```solidity
+// ❌ SWC-104 — retorno ignorado
+receptor.call{value: amount}("");
+
+// ✅ CORRECTO — verificar el retorno siempre
+(bool sent, ) = payable(receptor).call{value: amount}("");
+require(sent, "Fallo al enviar Ether");
+
+// ❌ .transfer() con gas limit fijo (obsoleto)
+payable(receptor).transfer(amount);
+
+// ✅ .call{} con manejo de error
+(bool ok, ) = payable(receptor).call{value: amount}("");
+require(ok, "Transfer failed");
+```
+
+---
+
+### PUNTO 17.6 [ESTANDAR] — Emision de Eventos y Auditabilidad
+- **Fuente:** EIP-20 §Events / OWASP SCSVS SC-4 / Solidity Docs Events.
+- **Auditar:**
+  * **Ausencia de eventos en cambios de estado critico:** Toda transicion de estado importante DEBE emitir un evento (es el unico mecanismo de log en blockchain).
+  * **EIP-20 compliance:** `transfer` y `transferFrom` DEBEN emitir `Transfer`. `approve` DEBE emitir `Approval`. Omitirlos viola el estandar y rompe indexadores/wallets.
+  * **Parametros indexados:** Campos usados para filtrado (from, to, owner) deben ser `indexed` para permitir busquedas eficientes en logs.
+  * **Eventos en funciones administrativas:** `pausarContrato`, `revocarDID`, `updateVCHash` deben emitir eventos auditables.
+
+```solidity
+// ❌ Transfer sin evento (viola EIP-20)
+function transfer(address to, uint256 amount) public returns (bool) {
+    _balances[msg.sender] -= amount;
+    _balances[to] += amount;
+    return true; // ← sin emit Transfer
+}
+
+// ✅ EIP-20 compliant
+event Transfer(address indexed from, address indexed to, uint256 value);
+
+function transfer(address to, uint256 amount) public returns (bool) {
+    _balances[msg.sender] -= amount;
+    _balances[to] += amount;
+    emit Transfer(msg.sender, to, amount); // ✅ obligatorio
+    return true;
+}
+```
+
+---
+
+### PUNTO 17.7 [ESTANDAR] — Aritmetica Segura y Manejo de ETH/Tokens
+- **Fuente:** SWC-101 / Solidity 0.8.x Docs — Checked Arithmetic.
+- **Auditar:**
+  * **Division entera:** En Solidity, `5 / 2 == 2` (trunca). En calculos de fees o proporciones, el orden de operaciones importa: siempre multiplicar antes de dividir.
+  * **Precision de tokens:** Si `decimals = 18`, el supply y montos deben estar en unidades minimas (wei equivalente), no en unidades humanas.
+  * **`block.timestamp` para logica critica (SWC-116):** Los mineros pueden manipular `block.timestamp` en ±15 segundos. No usar para logica de negocio critica (vencimientos exactos, randomness).
+  * **Balance del contrato vs contabilidad interna:** `address(this).balance` puede ser forzado a incrementar con `selfdestruct`. No asumir que el balance del contrato == suma de balances internos.
+
+```solidity
+// ❌ Division antes de multiplicacion (perdida de precision)
+uint256 fee = amount / 100 * feePercent;
+
+// ✅ Multiplicar primero
+uint256 fee = (amount * feePercent) / 100;
+
+// ❌ SWC-116 — timestamp para logica exacta
+require(block.timestamp == deadline, "Momento exacto requerido");
+
+// ✅ Usar rangos seguros
+require(block.timestamp <= deadline + 15, "Transaccion expirada");
+```
+
+---
+
+### PUNTO 17.8 [CONVENCION] — Visibilidad de Funciones y Variables
+- **Fuente:** Solidity Docs — Visibility / Consensys Best Practices.
+- **Auditar:**
+  * **Visibilidad explicita obligatoria:** Toda funcion y variable de estado debe tener visibilidad explicita (`public`, `private`, `internal`, `external`). Solidity >= 0.5.0 lo requiere.
+  * **`external` vs `public`:** Funciones solo llamadas desde fuera del contrato deben ser `external` (mas eficiente en gas que `public` para parametros calldata).
+  * **Variables de estado sensibles:** Mappings de balances, claves, identidades deben ser `private`. `private` no oculta los datos en la blockchain (son leibles on-chain), pero previene acceso desde contratos derivados.
+  * **`immutable` para valores del constructor:** Variables asignadas una sola vez en el constructor deben ser `immutable` (ahorra gas en lecturas vs `storage`).
+
+```solidity
+// ❌ Sin visibilidad explicita (warning en compilador moderno)
+uint256 totalSupply;
+function transfer(address to, uint256 amount) returns (bool) { ... }
+
+// ✅ Visibilidad explicita
+uint256 public totalSupply;
+function transfer(address to, uint256 amount) public returns (bool) { ... }
+
+// ✅ immutable para el constructor (como en QuantumTx_*.sol)
+address public immutable owner;
+address public immutable receptor;
+```
+
+---
+
+### PUNTO 17.9 [ESTANDAR] — Integridad de Firmas Post-Cuanticas (Dilithium/ML-DSA65)
+- **Fuente:** NIST SP 800-208 / FIPS 204 (ML-DSA) / OWASP SCSVS SC-14.
+- **Auditar — especifico para `TransactionRegistry.sol` y `QuantumTx_*.sol`:**
+  * **Verificacion en contrato:** El contrato actualmente **almacena** `quantumSignature` pero **no la verifica on-chain**. Solidity no tiene una precompila para Dilithium. La verificacion debe realizarse off-chain (backend) o mediante un oraculo criptografico antes de llamar al contrato.
+  * **Firma almacenada como `bytes`:** Correcto. Dilithium2 genera firmas de ~2420 bytes y Dilithium3 de ~3293 bytes. Verificar que el campo `bytes quantumSignature` no tenga limite artificial que trunque la firma.
+  * **Replay attack:** Una firma post-cuantica valida puede ser re-enviada. El contrato debe incluir un nonce o un identificador unico por transaccion que impida reutilizar la misma firma en una transaccion diferente.
+  * **`PQC_SIGNATURE` como constante de string:** En `QuantumTx_*.sol`, la firma se almacena como constante publica en el bytecode. Esto no es una firma criptografica verificable — es solo una cadena de texto de referencia. Documentar claramente su proposito (identificador, no prueba criptografica on-chain).
+
+```solidity
+// ⚠️ IMPORTANTE — TransactionRegistry.sol
+// La firma Dilithium es almacenada pero NO verificada on-chain.
+// La arquitectura correcta es:
+// 1. Backend verifica la firma Dilithium off-chain
+// 2. Solo si la firma es valida, el backend (con clave de registrar) llama al contrato
+// 3. El contrato confía en la autorización del registrar (control de acceso, PUNTO 17.4)
+
+// ❌ REPLAY ATTACK — misma firma, distinta transaccion
+// Si 'quantumSignature' firma (from, to, amount) sin incluir un nonce,
+// puede reutilizarse para registrar una transaccion identica fraudulenta.
+
+// ✅ Incluir nonce o timestamp en el payload firmado
+// El backend debe firmar: keccak256(from || to || amount || timestamp || nonce)
+// Y el contrato debe verificar que el nonce no haya sido usado antes.
+mapping(bytes32 => bool) private usedSignatureHashes;
+
+function registerTransaction(..., bytes memory quantumSignature) public onlyRegistrar {
+    bytes32 sigHash = keccak256(quantumSignature);
+    require(!usedSignatureHashes[sigHash], "Firma ya utilizada (replay attack)");
+    usedSignatureHashes[sigHash] = true;
+    // ... resto del registro
+}
+```
+
+---
+
+### PUNTO 17.10 [ESTANDAR] — Consistencia del Registro DID/VC
+- **Fuente:** W3C DID Core Spec v1.0 / W3C Verifiable Credentials / OWASP SCSVS SC-5.
+- **Auditar — especifico para `DIDRegistry.sol`:**
+  * **Limpieza incompleta en revocacion:** `revokeDID()` establece `isActive = false` pero **no limpia** `didToAddress[did]`. El DID revocado sigue apuntando a la address antigua, lo que puede causar confusion en `getAddressByDID` si el DID se reutiliza en otro registro.
+  * **Ausencia de re-registro post-revocacion:** Tras `revoceDID()`, `registerDID` falla porque `identities[msg.sender].isActive` es `false`, pero la condicion `require(!identities[msg.sender].isActive)` es `true` (permite registrar). Sin embargo, si el DID string es el mismo, `didToAddress[_did] != address(0)` bloqueara el re-registro aunque el DID fue revocado. Inconsistencia logica.
+  * **Sin control de acceso en lectura de VC:** `getVCHash` es `public view`. El hash del VC es publico on-chain, pero si el hash referencia un documento confidencial, cualquiera puede construir la ruta del documento. Documentar las implicaciones de privacidad.
+  * **Sin historial de VC:** `updateVCHash` sobrescribe el hash anterior sin registro historico. Para auditoria forense, considerar un array de hashes con timestamps.
+
+```solidity
+// ❌ DIDRegistry.sol — revocacion incompleta
+function revokeDID() public {
+    require(identities[msg.sender].isActive, "No hay identidad registrada");
+    string memory did = identities[msg.sender].did;
+    identities[msg.sender].isActive = false;
+    // ← didToAddress[did] NO se limpia: sigue apuntando a msg.sender
+    emit DIDRevoked(msg.sender, did, block.timestamp);
+}
+
+// ✅ Revocacion completa
+function revokeDID() public {
+    require(identities[msg.sender].isActive, "No hay identidad registrada");
+    string memory did = identities[msg.sender].did;
+    identities[msg.sender].isActive = false;
+    delete didToAddress[did]; // ← limpiar mapping inverso
+    emit DIDRevoked(msg.sender, did, block.timestamp);
+}
+
+// ✅ Historial de VCs
+struct Identity {
+    string did;
+    bytes32 vcHash;
+    bytes32[] vcHistory;  // historial con timestamps
+    uint256 timestamp;
+    bool isActive;
+}
+```
+
+---
+
+### PUNTO 17.11 [CONVENCION] — Circuit Breaker, Upgradability y Gestion de Emergencias
+- **Fuente:** Consensys Best Practices — Emergency Stop / OpenZeppelin Pausable.
+- **Auditar:**
+  * **Circuit breaker implementado:** `QuantumTx_*.sol` implementa correctamente `isPaused` + `whenNotPaused` + `pausarContrato`/`reanudarContrato`. Verificar que todos los contratos criticos del proyecto tengan esta capacidad.
+  * **`contrato.sol` sin circuit breaker:** El contrato EIP-20 no tiene mecanismo de pausa. Si se detecta un exploit, no hay forma de detener transferencias.
+  * **`DIDRegistry.sol` sin circuit breaker:** No se puede pausar el registro en caso de emergencia.
+  * **Patron Proxy para upgradability:** Los contratos actuales son no-upgradeables. Documentar explicitamente si esto es intencional. Si se necesita upgradability, usar EIP-1967 (Transparent Proxy) o UUPS.
+
+```solidity
+// ✅ Pattern correcto de circuit breaker (ya en QuantumTx_*.sol)
+bool public isPaused;
+
+modifier whenNotPaused() {
+    require(!isPaused, "Contrato pausado");
+    _;
+}
+
+// ⚠️ RECOMENDADO — agregar a contrato.sol y DIDRegistry.sol
+// import "@openzeppelin/contracts/security/Pausable.sol";
+// contract ContratoToken is Pausable { ... }
+// function transfer(...) public whenNotPaused returns (bool) { ... }
+```
+
+---
+
+### PUNTO 17.12 [CONVENCION] — Gas Optimization y Limites de la EVM
+- **Fuente:** EVM Yellowpaper / Consensys Gas Optimization.
+- **Auditar:**
+  * **Strings en storage:** Almacenar `string memory txHash` y `string memory comment` en el struct `TransactionRecord` en storage es caro en gas. Para hashes, usar `bytes32` directamente (el hash de la tx ya es `bytes32`).
+  * **Array dinamico `txHashes[]` sin paginacion:** `getTransactionCount()` devuelve el total, pero no hay forma de paginar los registros. Si el array crece a miles de entradas, iterar sobre el fallara por gas limit.
+  * **`bytes quantumSignature` en storage:** Una firma Dilithium3 (~3293 bytes) almacenada en storage cuesta aproximadamente 3293/32 = ~103 slots de storage = ~2M gas. Evaluar si la firma debe almacenarse on-chain o solo su hash.
+  * **Loops sobre arrays en funciones de vista:** No hay loops actualmente, pero prevenirlos si se agregan funciones de listado.
+
+```solidity
+// ❌ String en storage para hash (costoso)
+struct TransactionRecord {
+    string txHash;  // hasta 32 chars = 1 slot, pero > 32 chars = costoso
+    ...
+}
+
+// ✅ bytes32 para hashes (siempre 1 slot = 20K gas vs variable para string)
+struct TransactionRecord {
+    bytes32 txHashBytes;  // keccak256 del txHash string = siempre 32 bytes
+    ...
+}
+
+// ❌ Firma completa on-chain (muy costoso en gas)
+bytes quantumSignature;  // ~3293 bytes = ~100 storage slots
+
+// ✅ Solo el hash de la firma on-chain
+bytes32 quantumSignatureHash;  // keccak256 de la firma = 1 slot
+// La firma completa se guarda off-chain (IPFS, base de datos)
+```
+
+---
+
+## FORMATO DE REPORTE (Markdown)
+
+Para cada hallazgo reporta:
+
+```
+[PUNTO 17.X] — [Nombre del Criterio]
+Contrato Afectado: [contrato.sol / TransactionRegistry.sol / DIDRegistry.sol / QuantumTx_*.sol]
+Severidad: 🔴 CRITICA (Fondos en riesgo / Datos corruptibles) | 🟠 ALTA (Logica rota / Estandar violado) | 🟡 MEDIA (Best practice / Gas)
+SWC/CWE Referencia: [SWC-XXX / CWE-XXX]
+Hallazgo: [Descripcion tecnica de la vulnerabilidad o problema]
+Vector de Ataque: [Como podria explotarse]
+Remediacion (Diff Solidity):
+```
+
+```solidity
+// ❌ ANTES
+[codigo vulnerable]
+
+// ✅ DESPUES
+[codigo corregido]
+```
+
+**Metricas Finales:**
+
+```
+Nivel de Seguridad del Contrato:     [0 = Fondos en riesgo | 4 = Auditado y seguro]
+Vulnerabilidades CRITICAS:           [Lista: reentrancy, access control, arithmetic]
+Incumplimientos de EIP:              [Lista de EIPs violados]
+Issues de Gas:                       [Estimacion de gas desperdiciado por slot]
+Preparado para Deploy a Mainnet:     [Si / No — con justificacion]
+Recomendacion de Auditoria Externa:  [Si (siempre para contratos con fondos reales) / No]
+```

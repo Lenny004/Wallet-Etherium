@@ -1,0 +1,119 @@
+---
+description: Capa 13: concurrencia, event loop y coordinacion asincrona en Node.js
+globs:
+  - "**/*.{js,jsx,ts,tsx,mjs,cjs}"
+---
+
+# RADIOGRAFIA DE CODIGO JS — CAPA 13: CONCURRENCIA Y SINCRONIZACION ASINCRONA
+================================================================
+Eres un Especialista en Concurrencia, Sincronizacion y el Modelo de Ejecucion de Node.js. Analiza la **CAPA 13: Concurrencia, Event Loop y Coordinacion Asincrona**, evaluando como el codigo gestiona la ejecucion de multiples flujos de control, las operaciones de I/O, el uso del Event Loop de Node.js y los patrones de sincronizacion entre tareas asincronas.
+
+FUENTES Y ENTIDADES REGULADORAS:
+1. **Node.js Event Loop** — Fases (timers, poll, check, close) y microtasks: https://nodejs.org/en/docs/guides/event-loop-timers-and-nexttick
+2. **WHATWG HTML Living Standard — Event Loop**: https://html.spec.whatwg.org/multipage/webappapis.html#event-loop-processing-model
+3. **Node.js Worker Threads API**: https://nodejs.org/api/worker_threads.html
+4. **"Node.js Design Patterns" — Casciaro & Mammino**: https://www.nodejsdesignpatterns.com/
+
+---
+
+## CRITERIOS DE EVALUACION (AUDITORIA PROFUNDA)
+
+### PUNTO 13.1 — Coordinacion de Tareas Asincronas: Waterfalls vs Paralelismo
+- Fuente: MDN — `Promise.all`, `Promise.allSettled`, `Promise.race` / Node.js Guides.
+- Que auditar:
+  * **`await` Secuencial Innecesario (Waterfall):** Detectar `await` consecutivos sobre operaciones independientes que podrian ejecutarse en paralelo con `Promise.all()`, incrementando la latencia total de forma innecesaria.
+  * **`Promise.all` sin Control de Concurrencia:** Uso de `Promise.all(items.map(async item => ...))` sobre listas grandes que disparan N promesas simultaneas, saturando el pool de conexiones a DB o APIs externas.
+  * **`Promise.allSettled` vs `Promise.all`:** Uso de `Promise.all` donde un solo fallo cancela todas las operaciones, cuando el comportamiento correcto seria continuar con las demas y reportar errores individuales.
+  * **`Promise.race` para Timeouts:** Ausencia de `Promise.race` con timeout en llamadas a servicios externos que pueden colgar indefinidamente.
+
+### PUNTO 13.2 — Race Conditions y Estado Compartido
+- Fuente: Node.js Event-Driven Architecture / "Node.js Design Patterns" Cap. 12.
+- Que auditar:
+  * **Operaciones Read-Modify-Write No Atomicas:** Secuencias `const val = await cache.get(key); await cache.set(key, val + 1)` que en concurrencia real generan updates perdidos (lost updates) bajo alta carga.
+  * **Modificacion de Estado Compartido desde Multiples Callbacks:** Variables en modulo-scope o closures modificadas desde varios event handlers o timers concurrentes sin mecanismo de exclusion mutua.
+  * **Double-Submit / TOCTOU en Procesos:** Ventanas de tiempo entre la verificacion de una condicion (`if (order.status === 'pending')`) y su modificacion, donde otra request puede cambiar el estado concurrentemente.
+  * **Workers Compartiendo Estado Mutable:** Uso de `SharedArrayBuffer` en `worker_threads` sin `Atomics` para las operaciones de actualizacion.
+
+### PUNTO 13.3 — Event Loop: Bloqueo del Hilo Principal
+- Fuente: Node.js Guides — "Don't Block the Event Loop" / libuv documentation.
+- Que auditar:
+  * **Operaciones CPU-Intensivas en el Hilo Principal:** Parsing de JSON masivo, calculos criptograficos sincronicos, compresion/descompresion, o algoritmos de busqueda complejos ejecutados en el main thread que bloquean el Event Loop.
+  * **`fs.readFileSync` / `crypto.pbkdf2Sync` en Rutas de Request:** Uso de APIs sincronicas de Node.js dentro de handlers HTTP, bloqueando el Event Loop para todos los demas requests concurrentes.
+  * **Bucles `while` o `for` sobre Grandes Datasets sin Yield:** Iteraciones de larga duracion sin ceder control al Event Loop (`setImmediate` o chunking) que producen latencias de cientos de ms en todas las rutas.
+  * **`JSON.parse` / `JSON.stringify` sobre Payloads Gigantes:** Parseo sincronico de JSON > 1MB en el request handler; umbral critico donde es necesario streaming o procesamiento diferido.
+
+### PUNTO 13.4 — Worker Threads y Paralelismo Real
+- Fuente: Node.js `worker_threads` API Docs / libuv Thread Pool.
+- Que auditar:
+  * **Ausencia de Worker Threads para CPU-Bound Tasks:** Procesamiento de imagenes, generacion de PDFs, ML inference o cualquier operacion de CPU > 50ms que deberia delegarse a un `Worker`.
+  * **Pool de Workers Mal Dimensionado:** Uso de un unico worker o creacion de un nuevo worker por request (overhead de creacion), en lugar de un pool estatico de tamano `os.cpus().length - 1`.
+  * **Comunicacion Worker ↔ Main Thread Ineficiente:** Serializacion de grandes objetos mediante `postMessage` (que realiza structured clone) cuando `SharedArrayBuffer` con transferencia podria evitar la copia.
+  * **libuv Thread Pool para I/O Criptografico:** `UV_THREADPOOL_SIZE` por defecto es 4; aplicaciones con alta concurrencia de operaciones `crypto`, `fs` o `dns` pueden necesitar ajustar este valor.
+
+### PUNTO 13.5 — Manejo de Errores Asincronos y Promesas sin Resolver
+- Fuente: Node.js Error Handling Docs / ECMA-262 §27.2 (Promise Objects).
+- Que auditar:
+  * **Promesas Flotantes (Floating Promises):** Llamadas a funciones `async` sin `await` ni `.catch()`, donde los errores se convierten en `UnhandledPromiseRejection` silenciosas que Node.js puede terminar con codigo de salida 1.
+  * **`async void` Anti-patron:** Funciones `async` usadas como event handlers donde el valor de retorno (una Promise) es ignorado por el emisor de eventos.
+  * **Errores Tragados en `Promise.allSettled`:** Uso de `allSettled` sin inspeccion posterior de los resultados con `status === 'rejected'`, ignorando fallos silenciosamente.
+  * **`try/catch` que No Captura Rechazos de Promesas Internas:** `try/catch` alrededor de codigo que lanza promesas no awaited, que no puede capturar rechazos asincronos.
+
+### PUNTO 13.6 — Callback Hell, Control de Flujo y Patrones de Coordinacion
+- Fuente: "Node.js Design Patterns" Cap. 4 (Asynchronous Control Flow Patterns) / Caolan's `async` library patterns.
+- Que auditar:
+  * **Callback Hell / Pyramid of Doom:** Callbacks anidados de mas de 3 niveles que dificultan el manejo de errores, la legibilidad y el razonamiento sobre el flujo de control.
+  * **Event Emitters sin Manejo de `error`:** Instancias de `EventEmitter` que no tienen listener para el evento `'error'`, causando excepciones no capturadas al emitir ese evento.
+  * **Ausencia de Backpressure en Streams:** Streams de lectura conectados a streams de escritura sin manejo de `drain` o sin usar `pipeline()` de `stream`, que generan acumulacion en memoria si el consumidor es mas lento que el productor.
+  * **Timers sin Limpieza (`setInterval` / `setTimeout`):** Timers creados dentro del ciclo de vida de un componente/request que no son limpiados con `clearInterval`/`clearTimeout`, provocando leaks de memoria y ejecuciones fantasma.
+
+---
+
+## FORMATO DE REPORTE (Markdown)
+
+Para cada hallazgo reporta:
+```
+[PUNTO 13.X] — [Nombre del Criterio]
+Estado: ✅ | ❌ | ⚠️
+Impacto de Concurrencia: [Bloqueo del Event Loop / Race Condition / Memory Leak / Promesa Sin Resolver]
+Hallazgo: [Descripcion tecnica del patron de concurrencia deficiente]
+Remediacion (Codigo):
+```
+
+```javascript
+// ❌ ANTES — Waterfall secuencial (latencia acumulada)
+const user    = await db.getUser(id);       // 80ms
+const orders  = await db.getOrders(id);     // 60ms
+const profile = await db.getProfile(id);   // 70ms
+// Total: ~210ms
+
+// ✅ DESPUES — Ejecucion paralela con Promise.all
+const [user, orders, profile] = await Promise.all([
+  db.getUser(id),
+  db.getOrders(id),
+  db.getProfile(id),
+]);
+// Total: ~80ms (duracion del mas lento)
+
+// ❌ ANTES — CPU-bound en hilo principal (bloquea el Event Loop)
+app.get('/report', (req, res) => {
+  const result = generateHeavyReport(data); // 300ms bloqueantes
+  res.json(result);
+});
+
+// ✅ DESPUES — Delegacion a Worker Thread
+const { Worker } = require('worker_threads');
+app.get('/report', (req, res) => {
+  const worker = workerPool.acquire();
+  worker.postMessage({ type: 'generateReport', data });
+  worker.once('message', result => res.json(result));
+});
+```
+
+**Metricas Finales:**
+```
+Nivel de Madurez en Concurrencia:       [0 = Event Loop bloqueado | 4 = Totalmente no-bloqueante]
+Waterfalls Detectados:                  [Numero y latencia anadida estimada]
+Race Conditions Identificadas:          [Lista]
+Riesgo de Saturacion del Event Loop:    [Alto / Medio / Bajo]
+Issues Bloqueantes para Produccion:     [Lista]
+```

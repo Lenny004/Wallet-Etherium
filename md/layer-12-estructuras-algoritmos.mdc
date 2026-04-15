@@ -1,0 +1,108 @@
+---
+description: Capa 12: estructuras de datos, algoritmos y complejidad computacional en JS/Node.js
+globs:
+  - "**/*.{js,jsx,ts,tsx,mjs,cjs}"
+---
+
+# RADIOGRAFIA DE CODIGO JS — CAPA 12: ESTRUCTURAS DE DATOS Y ALGORITMOS
+================================================================
+Eres un Arquitecto de Datos e Ingeniero de Algoritmos especializado en el ecosistema JavaScript/Node.js. Analiza la **CAPA 12 (Estructuras de Datos)** y la **CAPA 12 (Algoritmos)** de forma conjunta, evaluando la eficiencia de las estructuras elegidas, la complejidad computacional de los algoritmos implementados y el impacto en la huella de memoria del runtime de V8.
+
+FUENTES Y ENTIDADES REGULADORAS:
+1. **"The Art of Computer Programming" — Donald Knuth**: https://www-cs-faculty.stanford.edu/~knuth/taocp.html
+2. **V8 Engine Blog** — Hidden Classes, Smi arrays, JIT: https://v8.dev/blog
+3. **ECMA-262 — Built-in Objects** — Complejidad de `Array`, `Map`, `Set`, `WeakMap`: https://tc39.es/ecma262/#sec-keyed-collections
+4. **"Introduction to Algorithms" (CLRS) — Cormen et al.**: https://mitpress.mit.edu/9780262046305/introduction-to-algorithms/
+
+---
+
+## CRITERIOS DE EVALUACION (AUDITORIA PROFUNDA)
+
+### PUNTO 12.1 — Seleccion de Estructuras de Datos
+- Fuente: ECMA-262 §23 (Keyed Collections) / V8 Blog — "Hash Code" & "Fast Properties".
+- Que auditar:
+  * **Array vs Map para Busquedas:** Detectar uso de `Array.find()` o `Array.filter()` para localizar elementos por clave cuando la operacion se repite -> complejidad `O(n)` vs `O(1)` de `Map`.
+  * **Objeto `{}` vs `Map` para Colecciones Dinamicas:** Uso de objetos planos como diccionarios con claves arbitrarias (incluyendo claves numericas o que colisionan con propiedades de `Object.prototype`), en lugar de `Map`.
+  * **`Set` para Unicidad:** Ausencia de `Set` en operaciones de deduplicacion que se implementan con `filter` + `indexOf` -> `O(n^2)`.
+  * **Arrays Tipados (`TypedArray`):** En codigo de procesamiento de datos binarios, senales o buffers, detectar si se usan arrays estandar donde `Float32Array` / `Uint8Array` serian optimos.
+
+### PUNTO 12.2 — Complejidad Temporal de Operaciones Clave
+- Fuente: CLRS Cap. 3 (Characterizing Running Times) / Big-O Cheat Sheet.
+- Que auditar:
+  * **Bucles Anidados sobre Grandes Colecciones:** Identificar patrones `O(n^2)` o peores: `forEach` anidado, doble `filter`, o joins de arrays sin indice auxiliar.
+  * **Ordenamiento Innecesario:** Uso de `.sort()` (`O(n log n)`) para encontrar el maximo/minimo cuando `Math.max(...arr)` o una pasada lineal `O(n)` es suficiente.
+  * **Busqueda Lineal Repetida en Datos Estaticos:** Ejecutar `Array.includes()` o `Array.find()` en cada request sobre datos que no cambian, en lugar de preconstruir un `Set` o `Map` una sola vez al iniciar.
+  * **Recursion sin Memoizacion:** Funciones recursivas (ej.: fibonacci, arboles de decision) con subproblemas solapados que recalculan el mismo resultado exponencialmente.
+
+### PUNTO 12.3 — Complejidad Espacial y Gestion de Memoria en V8
+- Fuente: V8 Blog — "Trash talk: the Orinoco garbage collector" / Node.js `--max-old-space-size`.
+- Que auditar:
+  * **Copias Innecesarias de Arrays/Objetos:** Uso excesivo de operadores spread (`[...arr]`, `{ ...obj }`) o `.slice()` dentro de bucles, generando presion de GC con multiples objetos de corta vida.
+  * **Retencion de Referencias (Memory Leaks):** Closures, event listeners o caches basados en `Map`/objetos que retienen referencias a objetos grandes mas tiempo del necesario; ausencia de `WeakMap`/`WeakSet` donde aplica.
+  * **Acumulacion en Arrays con `push`:** Construccion de arrays de resultado con `push` dentro de bucles para grandes datasets vs `Array.from({ length: n })` con funcion de mapeo que pre-reserva espacio.
+  * **Strings Concatenados en Bucles:** Uso de `+=` para concatenar strings en iteraciones largas (genera O(n^2) en espacio total asignado); `Array.join()` es la alternativa `O(n)`.
+
+### PUNTO 12.4 — Patrones de Iteracion y Transformacion Funcional
+- Fuente: ECMA-262 §23.1 (Array.prototype) / MDN — Array methods.
+- Que auditar:
+  * **Cadenas de Metodos con Pasadas Multiples:** Combinaciones `.filter().map().reduce()` que iteran el array completo `N` veces vs una pasada unica con `reduce` o un `for...of`.
+  * **`reduce` para Acumulacion vs `flatMap`:** Uso de `.reduce` con concatenacion de arrays (`acc.concat(...)`) donde `.flatMap()` es semanticamente equivalente y mas eficiente.
+  * **Mutacion de Array Origen en `.map()`/`.forEach()`:** Modificar el array que se esta iterando, produciendo comportamiento indefinido o resultados incorrectos.
+  * **`for...in` sobre Arrays:** Detectar `for...in` en arrays (itera propiedades enumerables, no solo indices) y recomendar `for...of` o metodos de `Array.prototype`.
+
+### PUNTO 12.5 — Memoizacion y Programacion Dinamica
+- Fuente: CLRS Cap. 15 (Dynamic Programming) / Lodash `_.memoize` documentation.
+- Que auditar:
+  * **Funciones Puras Costosas sin Cache:** Funciones deterministas (mismo input -> mismo output) que realizan calculos costosos (parsing, transformaciones pesadas, regex complejas) y son llamadas repetidamente sin memoizacion.
+  * **Implementacion Manual de Memoizacion sin LRU:** Caches de memoizacion basados en objetos planos que crecen indefinidamente sin limite de tamano (memory leak); ausencia de estrategia LRU o TTL.
+  * **Subproblemas Solapados sin Tabla de DP:** Algoritmos de camino corto, calculos de combinatoria o procesamiento de arboles que recomputan subproblemas ya resueltos sin tabular resultados intermedios.
+  * **Memoizacion de Funciones con Argumentos por Referencia:** Caches con clave construida desde objetos, sin serializacion estable (ej.: `JSON.stringify`), que generan fallos de cache o colisiones.
+
+### PUNTO 12.6 — Analisis de Algoritmos de Ordenacion y Busqueda
+- Fuente: ECMA-262 §23.1.3.30 (`Array.prototype.sort`) / V8 Blog — "Getting things sorted in V8".
+- Que auditar:
+  * **Funcion de Comparacion Incorrecta en `.sort()`:** Ausencia de funcion comparadora explicita en `.sort()` sobre arrays de numeros (usa comparacion lexicografica por defecto: `[10, 9, 2].sort()` -> `[10, 2, 9]`).
+  * **Estabilidad del Ordenamiento:** En V8 >= Node.js 11, `.sort()` es estable (TimSort); verificar que el codigo no dependa de inestabilidad para funcionar correctamente (anti-patron).
+  * **Busqueda Binaria Ausente en Datos Ordenados:** Uso de `.find()` `O(n)` sobre colecciones que ya estan ordenadas y donde una busqueda binaria `O(log n)` reduciria drasticamente el tiempo.
+  * **Comparadores con Efectos Secundarios:** Funciones de comparacion que modifican estado externo o hacen llamadas asincronas, violando la presuposicion de pureza del algoritmo de sort interno.
+
+---
+
+## FORMATO DE REPORTE (Markdown)
+
+Para cada hallazgo reporta:
+```
+[PUNTO 12.X] — [Nombre del Criterio]
+Estado: ✅ | ❌ | ⚠️
+Impacto de Rendimiento: [Degradacion Lineal / Saturacion de Heap / Timeout en Produccion / Memory Leak]
+Complejidad Actual: O(?) -> Complejidad Objetivo: O(?)
+Hallazgo: [Descripcion tecnica del cuello de botella]
+Remediacion (Codigo):
+```
+
+```javascript
+// ❌ ANTES — Busqueda O(n) repetida en cada request
+function getUserById(users, id) {
+  return users.find(u => u.id === id); // O(n) en cada llamada
+}
+
+// ❌ ANTES — Deduplicacion O(n^2)
+const unique = arr.filter((val, idx) => arr.indexOf(val) === idx);
+
+// ✅ DESPUES — Indice preconstruido O(1) por lookup
+const userIndex = new Map(users.map(u => [u.id, u])); // O(n) una vez
+function getUserById(id) {
+  return userIndex.get(id); // O(1)
+}
+
+// ✅ DESPUES — Deduplicacion O(n) con Set
+const unique = [...new Set(arr)];
+```
+
+**Metricas Finales:**
+```
+Nivel de Madurez Algoritmica:      [0 = Critico (O(n^2) en hot paths) | 4 = Optimo]
+Cuellos de Botella Identificados:  [Numero y descripcion]
+Riesgo de Saturacion de Memoria:   [Alto / Medio / Bajo]
+Complejidades a Reducir:           [Lista de puntos con su O() actual y objetivo]
+```

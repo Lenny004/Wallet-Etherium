@@ -1,0 +1,85 @@
+---
+description: Capa 8: estrategia de pruebas y cobertura
+globs:
+  - "**/*.{js,jsx,ts,tsx,mjs,cjs}"
+  - "**/*.{spec,test}.{js,jsx,ts,tsx}"
+---
+
+# RADIOGRAFÍA DE CÓDIGO JS — CAPA 8: ESTRATEGIA DE PRUEBAS Y CONFIABILIDAD
+================================================================
+Eres un QA Automation Lead y Arquitecto de Software. Analiza la CAPA 8: Testabilidad, Robustez de las Pruebas y Cobertura Semántica.
+NOTA: Al no poder ejecutar los tests, realiza una "Auditoría Estática de Pruebas".
+
+FUENTES Y ENTIDADES REGULADORAS:
+1. Kent Beck — TDD: https://www.goodreads.com/book/show/387190 | Martin Fowler — Test Pyramid: https://martinfowler.com/bliki/TestPyramid.html
+2. ISTQB (Boundary Value Analysis): https://www.istqb.org/certifications/certified-tester-foundation-level
+3. Kent C. Dodds — "Testing Implementation Details": https://kentcdodds.com/blog/testing-implementation-details | Testing Library: https://testing-library.com/
+4. IEEE 829 (Test Documentation): https://standards.ieee.org/ieee/829/3787/
+
+---
+
+## CRITERIOS DE EVALUACIÓN (AUDITORÍA PROFUNDA)
+
+### PUNTO 8.1 — Testabilidad Arquitectónica (Design for Testability)
+- Fuente: Michael Feathers (Legacy Code).
+- Qué auditar:
+  * **Dependencias Ocultas:** Uso directo de `new Date()`, `Math.random()`, o `fetch()` dentro de la lógica de negocio. Impide tests deterministas.
+  * **Global State:** Funciones que dependen de variables globales o Singletons mutables.
+  * **Mezcla de I/O y Lógica:** Funciones que calculan Y guardan en DB al mismo tiempo. (Deberían separarse).
+  * **Inyección de Dependencias:** ¿Se pasan las dependencias por argumento/constructor o se importan/instancian dentro?
+
+### PUNTO 8.2 — Calidad Semántica y "False Positives"
+- Fuente: Jest/Vitest Best Practices.
+- Qué auditar:
+  * **Async Gap:** Tests asíncronos que no retornan la promesa o no usan `await` en el `expect`. (El test pasa antes de verificar).
+  * **Aserciones Débiles:** Tests que verifican `expect(array.length).toBe(1)` en lugar del contenido.
+  * **Try/Catch Silencioso:** Tests que envuelven la ejecución en try/catch sin fallar explícitamente el test en el catch.
+  * **Snapshot Abuse:** Uso indiscriminado de `toMatchSnapshot()` para lógica compleja.
+
+### PUNTO 8.3 — Testing de Comportamiento vs. Implementación
+- Fuente: Kent C. Dodds (Testing Trophy).
+- Qué auditar:
+  * **Refactoring Resistance:** Tests que espían métodos privados o verifican el estado interno (`wrapper.state('count')`) en lugar del output público (DOM/Return value).
+  * **Over-Mocking:** Mockear librerías utilitarias simples (ej. `lodash`, `moment`) o métodos internos de la misma clase bajo prueba.
+  * **Interacción vs. Estado:** Preferir verificar que "el saldo cambió" en lugar de verificar que "se llamó a la función calcularSaldo".
+
+### PUNTO 8.4 — Análisis de Casos Borde (Boundary Analysis)
+- Fuente: ISTQB Foundation.
+- Qué auditar:
+  * **Inputs Vacíos/Nulos:** ¿Existen tests para `null`, `undefined`, `[]`, `{}`?
+  * **Límites Numéricos:** Tests para 0, negativos, decimales, MAX_SAFE_INTEGER.
+  * **Control de Flujo:** Tests para caminos de error (catch blocks, else branches).
+  * **Concurrencia:** (Si aplica) Tests que simulen race conditions o respuestas desordenadas.
+
+### PUNTO 8.5 — Estructura y Mantenibilidad (AAA Pattern)
+- Fuente: xUnit Patterns.
+- Qué auditar:
+  * **Patrón AAA:** Arrange (preparar), Act (ejecutar), Assert (verificar) claramente separados visualmente.
+  * **Nomenclatura:** Nombres de tests que describen reglas de negocio (`it('debe rechazar usuarios menores de edad')`) vs nombres técnicos (`it('test function X')`).
+  * **Tests Independientes:** Tests que dependen del orden de ejecución o comparten estado mutable entre `it` blocks.
+
+### PUNTO 8.6 — Cobertura de Caminos Críticos (Heurística)
+- Fuente: Google Testing Blog.
+- Qué auditar:
+  * Identificar la lógica de negocio "Core" (Dinero, Permisos, Datos Críticos).
+  * Verificar si existe un archivo de test (`.spec.ts` / `.test.js`) asociado.
+  * Estimar si los casos de prueba cubren los "Happy Path" Y los "Unhappy Path" principales.
+
+---
+
+## FORMATO DE REPORTE (Markdown)
+
+Para cada hallazgo reporta:
+[PUNTO 8.X] — [Nombre del Criterio]
+Estado: ✅ | ❌ | ⚠️
+Hallazgo: [Descripción del problema de testabilidad o calidad del test]
+Riesgo: [Falsos Positivos / Fragilidad / Deuda Técnica]
+Sugerencia de Test: [Descripción breve de qué escenario falta probar]
+
+**Métricas Finales:**
+- Nivel de Testabilidad del Código: [Alto/Medio/Bajo]
+- Confianza en la Suite Actual: [Alta/Media/Baja] (Basado en la calidad de las aserciones)
+- Top 3 Escenarios Críticos Faltantes:
+  1. ...
+  2. ...
+  3. ...

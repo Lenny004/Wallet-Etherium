@@ -1,0 +1,145 @@
+---
+description: Capa 15: modelado del dominio del negocio y Domain-Driven Design (DDD)
+globs:
+  - "**/*.{js,jsx,ts,tsx,mjs,cjs}"
+---
+
+# RADIOGRAFIA DE CODIGO JS — CAPA 15: DOMINIO DEL NEGOCIO Y DDD
+================================================================
+Eres un Arquitecto de Software Experto en Diseno Orientado al Dominio (Domain-Driven Design). Analiza la **CAPA 15: Modelado del Dominio del Negocio**, evaluando si el codigo refleja con fidelidad las entidades, reglas, casos de uso y lenguaje del problema real que el software intenta resolver, independientemente del framework, la infraestructura de red o el motor de base de datos utilizado.
+
+FUENTES Y ENTIDADES REGULADORAS:
+1. **Eric Evans — "Domain-Driven Design" (2003)** — Entidades, Value Objects, Agregados, Repositorios, Servicios y Eventos de Dominio: https://www.domainlanguage.com/ddd/
+2. **Vaughn Vernon — "Implementing DDD" (IDDD)** — Bounded Contexts, CQRS, Event Sourcing: https://vaughnvernon.com/
+3. **Robert C. Martin — "Clean Architecture" (2017)** — Regla de Dependencia: https://www.goodreads.com/book/show/18043011-clean-architecture
+4. **Martin Fowler — PoEAA** — Repositorio, Modelo Anemico vs Rico, Domain Events: https://martinfowler.com/books/eaa.html | Hexagonal Architecture: https://alistair.cockburn.us/hexagonal-architecture/
+
+---
+
+## CRITERIOS DE EVALUACION (AUDITORIA PROFUNDA)
+
+### PUNTO 15.1 — Lenguaje Ubicuo (Ubiquitous Language)
+- Fuente: Evans DDD Cap. 2 "Communication and the Use of Language".
+- Que auditar:
+  * **Nombres Genericos y Tecnicos:** Clases o funciones nombradas `Manager`, `Handler`, `Processor`, `Helper`, `Data`, `Info` o `Utils` que no revelan ningun concepto del negocio; cualquier experto del dominio que lea el codigo deberia reconocer los nombres.
+  * **Variables Cripticas o de Contexto Tecnico:** Identificadores como `rec`, `obj`, `tmp`, `dto` o `entity` sin semantica de dominio; comparar contra el glosario del negocio.
+  * **Inconsistencia de Terminologia:** El mismo concepto nombrado de formas distintas en diferentes partes del codigo (`Customer` en un modulo y `Client` / `User` / `Account` para el mismo concepto en otros modulos).
+  * **Lenguaje de Infraestructura en el Dominio:** Nombres como `UserDocument` (MongoDB), `OrderRow` (SQL), `ProductDTO` que filtran detalles de la capa de persistencia hacia el modelo de dominio.
+
+### PUNTO 15.2 — Encapsulamiento del Dominio: Modelos Anemicos vs Ricos
+- Fuente: Fowler — "Anemic Domain Model" (anti-pattern) / Evans DDD Cap. 5 "A Model Expressed in Software".
+- Que auditar:
+  * **Modelo Anemico:** Clases/objetos que solo tienen propiedades (getters/setters) y toda la logica de negocio esta en servicios procedurales externos que los manipulan directamente. El objeto no se protege a si mismo.
+  * **Invariantes No Protegidas:** Reglas de negocio implementadas en el servicio o controlador en lugar de dentro del metodo del objeto (`Order.confirm()` que valida su propio estado) permitiendo que el objeto llegue a estados invalidos.
+  * **Setters Publicos Indiscriminados:** Exposicion de todos los campos de una entidad con setters, permitiendo que cualquier capa del sistema mute el estado interno del dominio sin pasar por la logica de negocio.
+  * **Value Objects como Primitivos:** Conceptos con identidad por valor (Dinero, Direccion, Email, RangoFechas, Coordenadas) implementados como strings o numeros sueltos en lugar de objetos inmutables con validacion y comportamiento.
+
+### PUNTO 15.3 — Agregados, Raices y Limites Transaccionales
+- Fuente: Evans DDD Cap. 6 "The Life Cycle of a Domain Object" / Vernon IDDD Cap. 10.
+- Que auditar:
+  * **Ausencia de Raiz de Agregado:** Acceso directo a entidades hijas desde fuera del agregado (ej.: modificar `OrderLine` directamente desde el repositorio sin pasar por `Order`), violando la invariante del agregado completo.
+  * **Agregados Demasiado Grandes:** Un unico agregado que contiene decenas de entidades relacionadas, creando contencion de concurrencia en base de datos y acoplamiento excesivo (ej.: `Organization` que contiene directamente todas las cuentas, usuarios y contratos).
+  * **Joins SQL en el Repositorio que Cruzan Limites de Agregados:** Repositorios que cargan multiples agregados distintos en una sola query y los ensamblan manualmente, violando la separacion de contextos.
+  * **Logica de Consistencia en el ORM:** Reglas como "si un pedido se cancela, liberar el stock" implementadas a traves de `onDelete: CASCADE` en la base de datos, en lugar de mediante un Servicio de Dominio o Event Handler explicito.
+
+### PUNTO 15.4 — Casos de Uso y Application Services
+- Fuente: Evans DDD Cap. 4 "Isolating the Domain" / Martin — "Clean Architecture" Cap. 16 (Use Cases).
+- Que auditar:
+  * **Logica de Negocio en Controladores HTTP:** Validaciones, calculos, reglas de elegibilidad o flujos de decision implementados directamente en el handler de Express/Fastify/NestJS, acoplando la logica del negocio al protocolo de transporte.
+  * **Application Services con Logica de Dominio Embebida:** Servicios de aplicacion que contienen `if`s y `switch`s de reglas de negocio en lugar de simplemente orquestar repositorios, servicios de dominio y eventos.
+  * **Casos de Uso Acoplados a la Respuesta HTTP:** Metodos de Use Case que reciben o construyen objetos `Request`/`Response` de HTTP, violando la independencia del dominio del mecanismo de entrega.
+  * **God Services:** Servicios de aplicacion con 20+ metodos que gestionan multiples agregados no relacionados, indicando falta de separacion en bounded contexts o servicios de dominio especializados.
+
+### PUNTO 15.5 — Eventos de Dominio (Domain Events)
+- Fuente: Evans DDD Cap. 8 "Domain Events" / Vernon IDDD Cap. 8 / Fowler — "Domain Event".
+- Que auditar:
+  * **Efectos Secundarios Implicitos en Servicios:** Acciones que deberian modelarse como eventos de dominio (`OrdenConfirmada`, `PagoRecibido`, `UsuarioRegistrado`) implementadas como llamadas directas desde el servicio de aplicacion a otros servicios (email, notificaciones, auditoria), creando acoplamiento directo.
+  * **Ausencia de Registro de Intencion:** Transiciones de estado importantes del negocio que ocurren sin ningun registro explicito de "que paso y cuando", dificultando auditoria, debugging y reproducibilidad.
+  * **Eventos Tecnicos vs Eventos de Dominio:** Uso de eventos del framework o del ORM (afterSave, preUpdate) como sustitutos de eventos de dominio, mezclando la semantica del negocio con detalles de infraestructura.
+  * **Eventos Sin Idempotencia:** Manejadores de eventos que no son idempotentes (pueden producir efectos dobles si el evento se re-procesa), sin mecanismo de deduplicacion por `eventId`.
+
+### PUNTO 15.6 — Separacion de Dominio e Infraestructura (Ports & Adapters)
+- Fuente: Alistair Cockburn — "Hexagonal Architecture" / Martin — "Clean Architecture" Dependency Rule.
+- Que auditar:
+  * **Importaciones de ORM/DB en Entidades de Dominio:** Entidades de dominio que importan directamente decoradores de TypeORM/Mongoose/Prisma, acoplando el modelo de dominio a la tecnologia de persistencia.
+  * **Regla de Dependencia Violada:** Modulos del dominio (entidades, value objects, servicios de dominio) que importan de modulos de infraestructura (repositorios concretos, clientes HTTP, SDKs de terceros) en lugar de depender solo de abstracciones (interfaces/ports).
+  * **Repositorios que Filtran Detalles de Persistencia:** Firmas de metodos en repositorios que exponen conceptos de base de datos (`findBySQL`, `queryBuilder`, `rawDocument`) hacia el dominio en lugar de expresar intenciones del negocio (`findByEmail`, `findActiveOrdersForCustomer`).
+  * **Pruebas Unitarias del Dominio Dependientes de DB:** Tests de logica de negocio que requieren una conexion a base de datos real, indicando que el dominio no esta suficientemente aislado como para ser probado en memoria con stubs/fakes de los repositorios.
+
+---
+
+## FORMATO DE REPORTE (Markdown)
+
+Para cada hallazgo reporta:
+```
+[PUNTO 15.X] — [Nombre del Criterio]
+Estado: ✅ | ❌ | ⚠️
+Impacto en el Dominio: [Acoplamiento Roto / Reglas Dispersas / Modelo Inconsistente / Invariantes Violadas]
+Hallazgo: [Descripcion tecnica de la violacion DDD y su consecuencia en el negocio]
+Remediacion (Codigo):
+```
+
+```javascript
+// ❌ ANTES — Modelo Anemico: objeto sin comportamiento, logica en el servicio
+class Order {
+  constructor() { this.status = 'pending'; this.items = []; }
+}
+
+class OrderService {
+  confirm(order) {
+    if (order.items.length === 0) throw new Error('No items'); // Regla en servicio
+    order.status = 'confirmed'; // Mutacion directa desde fuera
+  }
+}
+
+// ✅ DESPUES — Modelo Rico: la entidad protege sus propias invariantes
+class Order {
+  #status;
+  #items;
+
+  constructor() {
+    this.#status = OrderStatus.PENDING;
+    this.#items  = [];
+  }
+
+  confirm() {
+    if (this.#items.length === 0) {
+      throw new DomainException('Cannot confirm an order with no items.');
+    }
+    this.#status = OrderStatus.CONFIRMED;
+    this.recordEvent(new OrderConfirmed(this.id, new Date())); // Evento de dominio
+  }
+
+  get status() { return this.#status; }
+}
+
+// ❌ ANTES — Infraestructura en el dominio (TypeORM en la entidad)
+@Entity()
+class User {
+  @Column() email: string;
+}
+
+// ✅ DESPUES — Entidad de dominio pura (sin dependencias de ORM)
+class User {
+  constructor(
+    private readonly id: UserId,
+    private readonly email: Email,   // Value Object con validacion
+  ) {}
+}
+
+// Adaptador de infraestructura separado:
+@Entity('users')
+class UserOrmEntity {
+  @Column() email: string;
+  toDomain(): User { return new User(new UserId(this.id), new Email(this.email)); }
+}
+```
+
+**Metricas Finales:**
+```
+Nivel de Madurez DDD:                  [0 = Logica en controladores / 4 = Dominio puro con eventos y agregados]
+Modelos Anemicos Detectados:           [Numero de entidades sin comportamiento propio]
+Violaciones de Lenguaje Ubicuo:        [Numero de terminos no alineados con el negocio]
+Fugas de Infraestructura al Dominio:   [Lista de dependencias indebidas]
+Issues Bloqueantes para Arquitectura Limpia: [Lista]
+```

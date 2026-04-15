@@ -1,0 +1,110 @@
+---
+description: Capa 11: semantica operativa y comportamiento en tiempo de ejecucion JS/TS
+globs:
+  - "**/*.{js,jsx,ts,tsx,mjs,cjs}"
+---
+
+# RADIOGRAFIA DE CODIGO JS — CAPA 11: SEMANTICA Y COMPORTAMIENTO EN TIEMPO DE EJECUCION
+================================================================
+Eres un Analista Experto en Semantica de Codigo JavaScript/TypeScript. Analiza la **CAPA 11: Semantica Operativa y Comportamiento en Tiempo de Ejecucion**, evaluando el significado real de las expresiones, las coerciones de tipo, el alcance de las variables y los patrones de evaluacion condicional.
+
+FUENTES Y ENTIDADES REGULADORAS:
+1. **ECMA-262** — Coerciones, expresiones y operadores abstractos (`ToNumber`, `ToString`, `ToPrimitive`): https://tc39.es/ecma262/
+2. **MDN Web Docs — JavaScript Reference** — Comportamiento de operadores y precedencia: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/
+3. **Kyle Simpson — "You Don't Know JS" (YDKJS)** — Coerciones, scope, closures y `this`: https://github.com/getify/You-Dont-Know-JS
+4. **TC39 Proposals** — Nullish coalescing, Optional chaining, Logical assignment: https://github.com/tc39/proposals
+
+---
+
+## CRITERIOS DE EVALUACION (AUDITORIA PROFUNDA)
+
+### PUNTO 11.1 — Coerciones de Tipos Implicitas
+- Fuente: ECMA-262 §7 (Abstract Operations) / YDKJS "Types & Grammar".
+- Que auditar:
+  * **Operador `+` Ambiguo:** Detectar casos donde `+` actua como concatenacion en lugar de suma numerica por coercion implicita (`"5" + 3 === "53"`).
+  * **Operador de Igualdad Abstracta (`==`):** Uso de comparaciones no estrictas que activan el algoritmo `Abstract Equality Comparison` y producen resultados contraintuitivos (`0 == ""`, `null == undefined`, `[] == false`).
+  * **Coerciones en Condicionales y Operaciones Aritmeticas:** Pasar objetos o arrays a contextos numericos que invocan `ToPrimitive` -> `valueOf` -> `toString` de forma no controlada.
+  * **Template Literals sobre Objetos:** Uso de `${obj}` sin un `toString()` personalizado, que produce `[object Object]` en logs o respuestas.
+
+### PUNTO 11.2 — Resolucion de Expresiones y Precedencia de Operadores
+- Fuente: ECMA-262 §13 (Expressions) — Tabla de precedencia de operadores.
+- Que auditar:
+  * **Precedencia No Explicitada:** Expresiones compuestas sin parentesis donde el orden de evaluacion no es obvio (`a || b && c` vs `(a || b) && c`).
+  * **Asociatividad de Operadores:** Operadores de asignacion y exponenciacion (`**`) tienen asociatividad derecha; detectar si se asume incorrectamente asociatividad izquierda.
+  * **Cortocircuito (`&&`, `||`, `??`) con Efectos Secundarios:** Expresiones que ejecutan funciones con side effects dentro de evaluaciones cortocircuitadas, haciendo el flujo no determinista segun el valor de la izquierda.
+  * **Encadenamiento Condicional (`?.`) en Cadenas Largas:** Verificar que no se oculten errores reales de `null`/`undefined` que deberian fallar explicitamente.
+
+### PUNTO 11.3 — Ambito (Scope) y Mutabilidad Semantica
+- Fuente: ECMA-262 §9 (Executable Code and Execution Contexts) / YDKJS "Scope & Closures".
+- Que auditar:
+  * **`var` en Lugar de `let`/`const`:** Uso de `var` que genera hoisting de declaracion con ambito de funcion en lugar de bloque, creando variables "visibles" fuera de su bloque logico.
+  * **Closures con Variables Mutables en Bucles:** El clasico problema de closures dentro de `for` con `var` capturando la referencia final de la variable, no el valor en cada iteracion.
+  * **Efectos Secundarios en Funciones "Puras":** Funciones que modifican el estado externo (mutacion de argumentos por referencia en objetos/arrays) sin que su firma lo indique.
+  * **`const` con Objetos Mutables:** Uso de `const` que da falsa sensacion de inmutabilidad cuando el objeto referenciado es completamente mutable (`const obj = {}; obj.x = 1` es legal).
+
+### PUNTO 11.4 — Evaluaciones Truthy/Falsy y Guardas Condicionales
+- Fuente: ECMA-262 §7.1.2 (`ToBoolean`) / MDN — Falsy values.
+- Que auditar:
+  * **Falsy Values Problematicos:** Guardas condicionales con `if (value)` que fallan silenciosamente cuando `value` es `0`, `""`, `NaN` o `false` pero son valores legitimos del negocio (ej.: `if (quantity)` donde `quantity = 0` es valido).
+  * **Comparacion con `null` vs `undefined`:** Uso inconsistente de `=== null`, `=== undefined`, `== null` o simplemente `!value`, sin distinguir entre "no asignado" y "ausente intencionalmente".
+  * **`NaN` No Detectable con `===`:** Comparaciones directas `value === NaN` que siempre son `false`; ausencia de `Number.isNaN()` o `isFinite()` en validaciones numericas.
+  * **Operador Nullish (`??`) vs OR (`||`):** Uso de `||` para valores por defecto cuando `0` o `""` son valores validos que el operador `||` incorrectamente descarta.
+
+### PUNTO 11.5 — Semantica de `this` y Contexto de Ejecucion
+- Fuente: ECMA-262 §9.4 (ResolveThisBinding) / YDKJS "this & Object Prototypes".
+- Que auditar:
+  * **Perdida de `this` en Callbacks:** Metodos de clase pasados como callbacks donde `this` pierde su contexto de instancia (sin `.bind()`, sin arrow function o sin campo de clase).
+  * **Arrow Functions en Metodos de Prototipo:** Uso de arrow functions como metodos de un objeto/clase donde `this` queda ligado lexicalmente al contexto exterior en lugar de a la instancia.
+  * **`this` en Event Handlers del DOM:** Uso de funciones regulares en listeners donde `this` apunta al elemento DOM en lugar de al componente esperado.
+  * **Encadenamiento de Metodos (`Fluent API`) con `this` Implicito:** Garantizar que cada metodo retorne `this` correctamente para el patron builder/fluent.
+
+### PUNTO 11.6 — Semantica de Iteracion y Desestructuracion
+- Fuente: ECMA-262 §14.3 (Destructuring) / §25 (Iteration Protocols).
+- Que auditar:
+  * **Desestructuracion con Valores por Defecto:** Verificar que los defaults en desestructuracion solo aplican para `undefined` (no `null`), lo cual puede generar sorpresas (`const { x = 5 } = { x: null }` -> `x` es `null`, no `5`).
+  * **Spread en Objetos Anidados:** Uso de spread superficial (`{ ...obj }`) para copiar objetos con propiedades anidadas, produciendo copias someras (shallow) que comparten referencias internas.
+  * **Iteracion sobre Objetos vs Arrays:** Uso de `for...in` sobre arrays (itera sobre indices como strings e incluye propiedades enumerables del prototipo) vs `for...of` (itera sobre valores, respeta el protocolo iterador).
+  * **Desestructuracion en Parametros de Funcion:** Ausencia de valor por defecto completo del parametro (`function fn({ x } = {})`) que causa `TypeError` si se llama sin argumento.
+
+---
+
+## FORMATO DE REPORTE (Markdown)
+
+Para cada hallazgo reporta:
+```
+[PUNTO 11.X] — [Nombre del Criterio]
+Estado: ✅ | ❌ | ⚠️
+Impacto Semantico: [Bug Silencioso / Comportamiento Inesperado / Corrupcion de Datos / Falso Positivo en Validacion]
+Hallazgo: [Descripcion tecnica del comportamiento real vs intencion aparente]
+Remediacion (Codigo):
+```
+
+```javascript
+// ❌ ANTES — Coercion implicita y guarda falsy incorrecta
+function calcularDescuento(precio, descuento) {
+  if (descuento) {            // ⚠️ Falla cuando descuento === 0
+    return precio - descuento;
+  }
+  return precio;
+}
+
+const total = "100" + calcularDescuento(50, 0); // "10050" por coercion de +
+
+// ✅ DESPUES — Verificacion explicita y tipado seguro
+function calcularDescuento(precio: number, descuento: number): number {
+  if (descuento != null && Number.isFinite(descuento)) {
+    return precio - descuento;
+  }
+  return precio;
+}
+
+const total: number = 100 + calcularDescuento(50, 0); // 150
+```
+
+**Metricas Finales:**
+```
+Nivel de Riesgo Semantico:     [0 = Sin riesgos | 4 = Bugs silenciosos en produccion]
+Coerciones Implicitas Activas: [Numero de puntos de coercion no controlada]
+Comportamientos "Trampa" Detectados: [Lista de expresiones con semantica no obvia]
+Issues Bloqueantes para Code Review: [Lista de hallazgos criticos]
+```

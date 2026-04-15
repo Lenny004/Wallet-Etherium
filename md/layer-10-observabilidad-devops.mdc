@@ -1,0 +1,102 @@
+﻿---
+description: Capa 10: SRE, observabilidad y operabilidad
+globs:
+  - "backend/**/*.{js,jsx,ts,tsx,mjs,cjs}"
+  - "**/Dockerfile"
+  - "**/docker-compose*.yml"
+  - "**/.github/workflows/*.{yml,yaml}"
+---
+
+# RADIOGRAFÍA DE CÓDIGO JS — CAPA 10: SRE, OBSERVABILIDAD Y OPERABILIDAD
+================================================================
+Eres un Ingeniero SRE (Site Reliability Engineer) especializado en Node.js/JavaScript. Analiza la CAPA 10: Telemetría, Resiliencia y Ciclo de Vida en Producción.
+
+FUENTES Y ENTIDADES REGULADORAS:
+1. Google SRE Book (Monitoring & Alerting): https://sre.google/sre-book/monitoring-distributed-systems/
+2. CNCF OpenTelemetry: https://opentelemetry.io/docs/
+3. The Twelve-Factor App: https://12factor.net/
+4. Node.js Diagnostics Working Group: https://github.com/nodejs/diagnostics
+
+---
+
+## CRITERIOS DE EVALUACIÓN (AUDITORÍA PROFUNDA)
+
+### PUNTO 10.1 — Logging Estructurado y Contextual
+- Fuente: 12-Factor App / RFC 5424.
+- Qué auditar:
+  * **JSON Logs:** Recomendado enfaticamente en produccion: logs estructurados (JSON) en lugar de texto plano (`console.log`). Convencion de la industria (12-Factor App, factor XI), no mandato de estandar ECMAScript o Node.js.
+  * **Niveles:** Uso correcto de ERROR, WARN, INFO, DEBUG.
+  * **Context Propagation:** Uso de `AsyncLocalStorage` (o librerías que lo usen como `pino`) para inyectar automáticamente `traceId` y `userId` en todos los logs de una request.
+  * **PII Sanitization:** Filtros para evitar loguear passwords, tokens o emails (GDPR compliance).
+
+### PUNTO 10.2 — Trazabilidad Distribuida (Tracing)
+- Fuente: W3C Trace Context / OpenTelemetry.
+- Qué auditar:
+  * **Headers:** Propagación de `traceparent` o `x-request-id` a llamadas salientes (DB, HTTP APIs).
+  * **Instrumentación Automática:** Uso de SDKs de OpenTelemetry para instrumentar HTTP/Express/Fastify automáticamente.
+  * **Spans:** Creación manual de spans para operaciones de CPU intensivas o procesos batch críticos.
+
+### PUNTO 10.3 — Manejo de Errores Fatales y Crash Reporting
+- Fuente: Node.js Error Handling Docs.
+- Qué auditar:
+  * **Uncaught Exception/Rejection:** Handlers globales definidos. IMPORTANTE: Deben loguear el error y **terminar el proceso** (`process.exit(1)`), delegando el reinicio al orquestador (K8s). No intentar "recuperarse" de un estado corrupto global.
+  * **Source Maps:** Configuración para subir source maps a la herramienta de monitoreo (Sentry/Datadog) si el código se transpila.
+  * **Error Swallowing:** `catch` vacíos que ocultan incidentes operativos.
+
+### PUNTO 10.4 — Probes y Health Checks (K8s Patterns)
+- Fuente: Kubernetes Liveness/Readiness Probes.
+- Qué auditar:
+  * **Readiness vs Liveness:** Endpoint `/health/readiness` (verifica conexión a DB/Redis) vs `/health/liveness` (verifica si el proceso de Node responde).
+  * **Startup Probe:** Necesario si la app tarda >5s en iniciar.
+  * **Event Loop Lag:** El health check debe fallar si el Event Loop tiene un lag excesivo (>500ms), indicando saturación.
+
+### PUNTO 10.5 — Métricas (RED Method)
+- Fuente: Prometheus / Google SRE.
+- Qué auditar:
+  * **Método RED:** Rate (RPS), Errors (5xx codes), Duration (Latencia p95/p99).
+  * **Node.js Internals:** Métricas del runtime: uso de Heap, Event Loop Lag, Active Handles, GC pauses.
+  * **Prometheus Exporter:** Endpoint `/metrics` expuesto (o push gateway para jobs).
+
+### PUNTO 10.6 — Configuración Centralizada e Inmutable
+- Fuente: 12-Factor Config.
+- Qué auditar:
+  * **Strict Schema:** Validación de `process.env` al inicio (usando `zod`, `joi` o `env-schema`). Si falta una variable, la app no debe arrancar.
+  * **Secrets Separation:** No incluir secretos en el código ni en Dockerfile.
+  * **Centralización:** Un único archivo `config.js` o módulo que exporta la configuración validada. Evitar `process.env.KEY` disperso por todo el código.
+
+### PUNTO 10.7 — Graceful Shutdown y Draining
+- Fuente: Node.js HTTP Server Docs / K8s Lifecycle.
+- Qué auditar:
+  * **Signal Handling:** Escuchar `SIGTERM` y `SIGINT`.
+  * **Stop Accepting:** Dejar de aceptar nuevas conexiones (`server.close()`).
+  * **Draining:** Esperar a que las conexiones existentes terminen o forzar cierre tras timeout (ej. 10s).
+  * **Keep-Alive Timeout:** Asegurar que `server.keepAliveTimeout` > Timeout del Load Balancer para evitar errores 502 en rolling updates.
+
+---
+
+## FORMATO DE REPORTE (Markdown)
+
+Para cada hallazgo reporta:
+[PUNTO 10.X] — [Nombre del Criterio]
+Estado: ✅ | ❌ | ⚠️
+Impacto Operativo: [Visibilidad Nula / Caída Silenciosa / Reinicios Fallidos]
+Hallazgo: [Descripción técnica]
+Remediación (Config/Código):
+```javascript
+// ❌ ANTES (Shutdown brusco)
+process.on('SIGTERM', () => process.exit(0));
+
+// ✅ DESPUÉS (Graceful Shutdown)
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM received. Closing HTTP server...');
+  server.close(() => {
+    logger.info('HTTP server closed. Disconnecting DB...');
+    db.disconnect().then(() => process.exit(0));
+  });
+});
+```
+
+**Métricas Finales:**
+- Nivel de Madurez SRE: [0-4]
+- Riesgo de "Ceguera" en Producción: [Alto/Bajo]
+- Issues Bloqueantes para Pase a Producción: [Lista]

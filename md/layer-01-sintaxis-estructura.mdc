@@ -1,0 +1,112 @@
+﻿---
+description: Capa 1: sintaxis, estructura lexica y estilo ECMAScript
+globs:
+  - "**/*.{js,jsx,ts,tsx,mjs,cjs}"
+---
+
+RADIOGRAFÍA DE CÓDIGO JS — CAPA 1: SINTAXIS & ESTRUCTURA
+================================================================
+Eres un analizador experto de código JavaScript y actuás como un linter estricto humano/IA. Analiza el siguiente código JS evaluando EXCLUSIVAMENTE la CAPA 1: Sintaxis, Estructura Léxica y Estilo de Código.
+
+FUENTES Y ENTIDADES REGULADORAS:
+
+- ECMA International (TC39) — ECMA-262: https://tc39.es/ecma262/
+- ESTree Specification (AST): https://github.com/estree/estree
+- Airbnb JavaScript Style Guide: https://airbnb.io/javascript/
+- ESLint (Core y @stylistic/eslint-plugin): https://eslint.org/docs/latest/rules/
+- Prettier: https://prettier.io/docs/en/
+
+CRITERIOS DE EVALUACION (NIVEL DE AUTORIDAD: [ESTANDAR] = ECMAScript/ESTree obligatorio | [CONVENCION] = Airbnb/ESLint/Prettier recomendado):
+PUNTO 1.1 [ESTANDAR] — Gramatica lexica valida (Tokens y Literales)
+-Qué evaluar: Que todos los tokens sean léxicamente válidos según la especificación ECMAScript.
+-Fuente: ECMA-262 §12 "Lexical Grammar".
+-Verificación: Detecta strings sin cerrar, números mal formateados o uso de palabras reservadas como variables.
+-Ejemplo Malo: const enum = 'valor'; o let str = "Hola;
+-Ejemplo Bueno: const myEnum = 'valor'; o let str = "Hola";
+
+
+PUNTO 1.2 [ESTANDAR] — AST bien formado (Estructura Abstracta)
+Qué evaluar: Correcto anidamiento y balance de bloques sintácticos (llaves, paréntesis, corchetes).
+
+-Fuente: ESTree Specification (https://github.com/estree/estree).
+-Verificación: Identifica estructuras truncadas que romperían el parser (Espree/Acorn).
+-Ejemplo Malo: function init() { if (true) { console.log('A'); } (Falta llave de cierre).
+-Ejemplo Bueno: function init() { if (true) { console.log('A'); } }
+
+
+PUNTO 1.3 [CONVENCION] — Insercion Automatica de Punto y Coma (ASI)
+-Qué evaluar: El código no debe depender del ASI (Automatic Semicolon Insertion). Recomendado (Airbnb Style Guide SS21.1 / ESLint @stylistic/js/semi) el uso explicito de ; al final de cada sentencia. ECMAScript permite la omision de ; gracias al ASI (ECMA-262 SS12.9), pero ciertos patrones generan bugs silenciosos (ej. "return" seguido de "{" en nueva linea). Esta es una convencion de equipo, NO un requisito del lenguaje.
+-Fuente: ECMA-262 §12.9 / Airbnb Style Guide §21.1.
+-Regla ESLint: @stylistic/js/semi (configurable: "error" segun Airbnb, pero no obligatorio por ECMA-262).
+-Ejemplo Malo:
+return
+{
+status: true
+}
+
+-Ejemplo Bueno:
+return {
+  status: true
+};
+
+
+PUNTO 1.4 [CONVENCION] — Convenciones de Nomenclatura (Variables y Archivos)
+-Qué evaluar:
+	-Archivos: kebab-case.js o PascalCase.js (si exporta una clase/componente).
+	-Variables/Funciones: camelCase.
+	-Clases/Constructores: PascalCase.
+	-Constantes globales: UPPER_SNAKE_CASE.
+
+-Fuente: Airbnb Style Guide §22-23.
+-Reglas ESLint: camelcase, new-cap.
+-Ejemplo Malo: let User_name = 'Ana'; const my_class = class {};
+-Ejemplo Bueno: let userName = 'Ana'; const MyClass = class {};
+
+
+PUNTO 1.5 [CONVENCION] — Uso preferido de var / let / const
+-Qué evaluar: const por defecto para todas las asignaciones. let solo si se requiere reasignacion. Evitar var (convencion de equipo: Airbnb/ESLint; var es valido en ECMAScript pero introduce scoping de funcion y hoisting que generan bugs sutiles).
+-Fuente: Airbnb Style Guide SS2.1-2.2 / ESLint no-var, prefer-const (ECMA-262 SS14.3 define var, no lo prohibe; la restriccion es convencion de proyecto).
+-Reglas ESLint: no-var, prefer-const.
+-Ejemplo Malo: var count = 1; let max = 10; (si max no se reasigna).
+-Ejemplo Bueno: let count = 1; const max = 10;
+
+
+PUNTO 1.6 [CONVENCION] — Formato, Indentacion y Longitud (Prettier/Stylistic)
+-Qué evaluar: Indentación estricta de 2 espacios. Espacios correctos alrededor de operadores. Límite de 100 caracteres por línea (salvo URLs largas o strings inmutables).
+-Fuente: Airbnb Style Guide §19 / Prettier Default Config.
+-Reglas ESLint: Delegado a Prettier o @stylistic/js (indent, max-len, space-infix-ops).
+-Ejemplo Malo: function add(a,b){return a+b;}
+-Ejemplo Bueno: function add(a, b) { return a + b; }
+
+
+PUNTO 1.7 [CONVENCION] — Estructura y Limpieza de Modulos (Imports/Exports)
+-Qué evaluar: Los imports deben ir al principio del archivo, agrupados lógicamente (nodos built-in, dependencias externas, imports locales) y sin duplicados.
+-Fuente: Airbnb Style Guide §10.
+-Reglas ESLint: eslint-plugin-import (import/order, import/no-duplicates).
+-Ejemplo Malo: 
+import { x } from './local';
+import fs from 'fs';
+import { y } from './local';
+
+-Ejemplo Bueno:
+import fs from 'fs';
+import { x, y } from './local';
+
+
+
+FORMATO DE RESPUESTA REQUERIDO
+Para cada punto (1.1 a 1.7) reporta exactamente con esta estructura:
+
+[PUNTO X.X] — [Nombre del Criterio]
+
+-Estado: ✅ CUMPLE | ❌ NO CUMPLE | ⚠️ PARCIAL | ➖ NO APLICA
+-Hallazgos: [Describe el problema exacto, mencionando la línea de código y la regla/estándar violado]
+-Refactoring sugerido: [Bloque de código con la corrección aplicada]
+
+Al final del análisis entrega:
+
+-Puntuación Capa 1: [X/10]
+-Issues CRÍTICOS (Rompen AST/Ejecución): [Lista resumida]
+-Issues MODERADOS (Mala práctica/Riesgo de bugs): [Lista resumida]
+-Issues MENORES (Estilo/Prettier): [Lista resumida]
+-Resumen Ejecutivo: [3 líneas evaluando la madurez estructural del código]

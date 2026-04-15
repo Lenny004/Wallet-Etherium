@@ -1,0 +1,125 @@
+---
+description: Capa 14: pipeline de build, bundling, transpilacion y distribucion
+globs:
+  - "**/vite.config.{js,ts}"
+  - "**/webpack.config.{js,ts}"
+  - "**/.babelrc"
+  - "**/babel.config.{js,json}"
+  - "**/tsconfig*.json"
+  - "**/package.json"
+---
+
+# RADIOGRAFIA DE CODIGO JS — CAPA 14: PIPELINE DE BUILD Y EMPAQUETADO
+================================================================
+Eres un Especialista en Optimizacion de Build, Empaquetado y Distribucion de Codigo JavaScript. Analiza la **CAPA 14: Pipeline de Build y Empaquetado**, evaluando el proceso de transpilacion, la estrategia de bundling, la optimizacion del tamano de entrega, la configuracion de entornos y la integridad del pipeline de distribucion.
+
+FUENTES Y ENTIDADES REGULADORAS:
+1. **Vite Documentation**: https://vitejs.dev/guide/ | **Rollup Documentation**: https://rollupjs.org/guide/en/
+2. **Webpack v5 Documentation**: https://webpack.js.org/concepts/
+3. **esbuild Documentation**: https://esbuild.github.io/ | **SWC Documentation**: https://swc.rs/docs/getting-started
+4. **Browserslist**: https://github.com/browserslist/browserslist | **Can I Use**: https://caniuse.com/
+
+---
+
+## CRITERIOS DE EVALUACION (AUDITORIA PROFUNDA)
+
+### PUNTO 14.1 — Tamano del Bundle y Tree Shaking
+- Fuente: Rollup Docs — "Tree-shaking" / Webpack v5 — "Tree Shaking Guide".
+- Que auditar:
+  * **Importaciones de Librerias Completas:** Detectar `import _ from 'lodash'` (importa 70KB+) en lugar de `import debounce from 'lodash/debounce'` o uso de alternativas tree-shakeable (`lodash-es`).
+  * **Dead Code en el Bundle:** Funciones, modulos o features exportadas pero nunca importadas que el bundler no puede eliminar por uso de `module.exports` (CommonJS no es tree-shakeable de forma confiable).
+  * **Dependencias Solo de Desarrollo en el Bundle de Produccion:** Librerias de testing, storybook, utilidades de desarrollo que terminan incluidas en el bundle de produccion por importaciones accidentales o config incorrecta.
+  * **Side Effects Mal Declarados:** Ausencia o configuracion incorrecta del campo `"sideEffects"` en `package.json`, que impide al bundler eliminar modulos que solo exportan pero no tienen efectos.
+
+### PUNTO 14.2 — Code Splitting y Lazy Loading
+- Fuente: Vite Docs — "Code Splitting" / Webpack Docs — "Dynamic Imports".
+- Que auditar:
+  * **Bundle Monolitico (Single Chunk):** Todo el codigo de la aplicacion en un unico archivo que el usuario debe descargar completo antes de ver cualquier contenido; ausencia total de estrategia de splitting.
+  * **Rutas de React/Vue/Svelte Sin Lazy Loading:** Componentes de pagina importados estaticamente en el router cuando `React.lazy(() => import('./Page'))` + `Suspense` permitiria cargarlos solo cuando se navega a esa ruta.
+  * **Librerias Pesadas No Diferidas:** Librerias como `moment.js`, `chart.js`, `monaco-editor` o `pdf.js` incluidas en el bundle inicial cuando solo se usan en rutas secundarias.
+  * **Chunks Demasiado Granulares:** Configuracion de splitting excesiva que genera cientos de micro-chunks, aumentando el numero de requests HTTP/2 mas alla del beneficio de paralelismo.
+
+### PUNTO 14.3 — Transpilacion, Polyfills y Compatibilidad de Browsers
+- Fuente: Browserslist / `@babel/preset-env` docs / esbuild `target` option.
+- Que auditar:
+  * **Target de Transpilacion Excesivamente Conservador:** Configuracion `targets: "IE11"` o similar que hace que Babel genere codigo ES5 con polyfills masivos para una audiencia que ya tiene soporte nativo de ES2020+.
+  * **Polyfills Globales vs Polyfills por Uso:** Uso de `import 'core-js/stable'` (importa todos los polyfills, ~100KB) en lugar de `useBuiltIns: 'usage'` en `@babel/preset-env` que inyecta solo los necesarios.
+  * **Babel donde SWC/esbuild Serian Suficientes:** Uso de Babel con configuracion compleja de plugins para proyectos que no necesitan macros personalizadas, cuando SWC o esbuild ofrecen velocidades 10-100x mayores.
+  * **Transformaciones Innecesarias de Sintaxis Moderna:** Transpilar `async/await` a generators + `regenerator-runtime` para ambientes que ya soportan `async/await` nativamente, anadiendo ~20KB al bundle.
+
+### PUNTO 14.4 — Source Maps, Seguridad y Configuracion de Entorno
+- Fuente: Webpack Docs — `devtool` option / Vite Docs — `build.sourcemap`.
+- Que auditar:
+  * **Source Maps Publicos en Produccion:** Generacion de source maps completos (`.map` inline o externos sin restriccion) que exponen el codigo fuente completo de la aplicacion en produccion, violando la confidencialidad del codigo propietario.
+  * **Variables de Entorno Embebidas en Bundle:** Secretos, API keys o URLs de servicios internos que terminan embebidos en el bundle mediante `DefinePlugin` o `import.meta.env`, accesibles a cualquier usuario con DevTools.
+  * **`NODE_ENV` No Definido en Produccion:** Ausencia de `NODE_ENV=production` que impide que React, Vue y otras librerias eliminen su codigo de desarrollo (warnings, DevTools) del bundle de produccion.
+  * **Separacion Insuficiente de Config Dev/Prod:** Configuracion del bundler en un unico archivo sin distincion clara entre `vite.config.dev.ts` y `vite.config.prod.ts` (o configuracion condicional), mezclando optimizaciones y configuraciones de desarrollo.
+
+### PUNTO 14.5 — Optimizacion de Assets: CSS, Imagenes y Fuentes
+- Fuente: Vite Docs — "Asset Handling" / Webpack Docs — "Asset Modules".
+- Que auditar:
+  * **CSS Critico No Extraido:** Todo el CSS incluido via JS (CSS-in-JS o imports de Webpack) sin extraccion de CSS critico (above-the-fold), bloqueando el render inicial hasta que se evalua el JS.
+  * **Imagenes No Optimizadas en el Bundle:** Assets de imagen incluidos como imports sin optimizacion de tamano, compresion (WebP/AVIF) o generacion de variantes responsivas.
+  * **Fuentes Cargadas Sincronicamente:** Fuentes web referenciadas con `@font-face` sin estrategia `font-display: swap` ni preload, bloqueando el texto visible durante la descarga.
+  * **Assets Sin Hashing en el Nombre:** Archivos de output sin hash en el nombre (`bundle.js` en lugar de `bundle.a3f2c1.js`), impidiendo el cache-busting en CDN y forzando recargas innecesarias en deployments.
+
+### PUNTO 14.6 — Reproducibilidad del Build y Gestion de Dependencias
+- Fuente: npm Docs — `package-lock.json` / Yarn Docs — `yarn.lock` / SLSA Supply Chain Levels.
+- Que auditar:
+  * **Ausencia de Lock File Committed:** `package-lock.json` o `yarn.lock` no incluido en el repositorio, permitiendo que instalaciones en diferentes momentos instalen versiones distintas de dependencias y rompan el build.
+  * **`^` / `~` en Dependencias de Produccion sin Control:** Rangos de version flexibles en `dependencies` (no en `devDependencies`) que pueden instalar versiones con breaking changes sin control explicito.
+  * **Dependencias con Vulnerabilidades Conocidas:** Ausencia de `npm audit` o `snyk` en el pipeline de CI, permitiendo que dependencias con CVEs lleguen a produccion.
+  * **Build No Deterministico:** Scripts de build que leen del filesystem, red o timestamp en tiempo de compilacion, haciendo el output del bundle diferente en cada ejecucion para el mismo codigo fuente.
+
+---
+
+## FORMATO DE REPORTE (Markdown)
+
+Para cada hallazgo reporta:
+```
+[PUNTO 14.X] — [Nombre del Criterio]
+Estado: ✅ | ❌ | ⚠️
+Impacto en Entrega: [Bundle Sobrecargado / Tiempo de Carga Excesivo / Exposicion de Codigo / Fallo de Build]
+Tamano Actual Estimado: [KB/MB] -> Tamano Objetivo: [KB/MB]
+Hallazgo: [Descripcion tecnica del problema de build/bundling]
+Remediacion (Config/Codigo):
+```
+
+```javascript
+// ❌ ANTES — Importacion de libreria completa (bundle: +70KB)
+import _ from 'lodash';
+const result = _.debounce(handler, 300);
+
+// ✅ DESPUES — Importacion granular (bundle: +2KB)
+import debounce from 'lodash-es/debounce';
+const result = debounce(handler, 300);
+
+// ❌ ANTES — Ruta cargada estaticamente
+import DashboardPage from './pages/Dashboard';
+
+// ✅ DESPUES — Lazy loading con React.lazy
+const DashboardPage = React.lazy(() => import('./pages/Dashboard'));
+// En el router:
+<Suspense fallback={<Spinner />}>
+  <DashboardPage />
+</Suspense>
+
+// ❌ ANTES — vite.config.ts sin separacion dev/prod
+export default defineConfig({ sourcemap: true, minify: false });
+
+// ✅ DESPUES — Configuracion segun entorno
+export default defineConfig(({ mode }) => ({
+  build: {
+    sourcemap: mode === 'development' ? 'inline' : false,
+    minify: mode === 'production' ? 'esbuild' : false,
+  }
+}));
+```
+
+**Metricas Finales:**
+```
+Nivel de Madurez del Pipeline:     [0 = Bundle monolitico sin optimizacion | 4 = Splitting, lazy loading y CI/CD optimizados]
+Tamano de Bundle Inicial (gzip):   [KB/MB actual] -> [Objetivo recomendado]
+Tiempo de Build en CI:             [segundos actuales]
+Issues de Seguridad en Build:      [Lista: source maps publicos, env vars expuestos, etc.]
+Issues Bloqueantes para Produccion: [Lista]

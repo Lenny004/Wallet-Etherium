@@ -1,0 +1,193 @@
+<div class="dashboard-shell">
+  <nav class="top-nav">
+    <div class="top-brand">Proyecto_Dev</div>
+    <div class="top-actions">
+      <button type="button" aria-label="Escanear QR">
+        <span class="material-symbols-outlined">qr_code_scanner</span>
+      </button>
+      <button type="button" aria-label="Abrir perfil">
+        <span class="material-symbols-outlined">account_circle</span>
+      </button>
+    </div>
+  </nav>
+
+  <aside class="side-nav">
+    <div class="identity-card">
+      <div class="identity-top">
+        <div class="identity-avatar">
+          <span class="material-symbols-outlined">fingerprint</span>
+        </div>
+        <div>
+          <h2>The Ethereal Vault</h2>
+          <p>Identidad Ethereum Segura</p>
+        </div>
+      </div>
+
+      <button type="button" class="wallet-btn">Conectar Wallet</button>
+    </div>
+
+    <div class="side-links">
+      <a href="#" class="active" (click)="$event.preventDefault()">
+        <span class="material-symbols-outlined">payments</span>
+        <span>Pagos</span>
+      </a>
+      <a href="#" (click)="$event.preventDefault()">
+        <span class="material-symbols-outlined">history</span>
+        <span>Historial</span>
+      </a>
+      <a href="#" (click)="$event.preventDefault()">
+        <span class="material-symbols-outlined">verified_user</span>
+        <span>Certificados</span>
+      </a>
+      <a href="#" (click)="$event.preventDefault()">
+        <span class="material-symbols-outlined">fact_check</span>
+        <span>Verificar</span>
+      </a>
+    </div>
+
+    <div class="side-links side-links--bottom">
+      <a href="#" (click)="$event.preventDefault()">
+        <span class="material-symbols-outlined">settings</span>
+        <span>Configuración</span>
+      </a>
+      <a href="#" (click)="$event.preventDefault()">
+        <span class="material-symbols-outlined">help</span>
+        <span>Soporte</span>
+      </a>
+    </div>
+  </aside>
+
+  <main class="content">
+    <header class="content-header">
+      <div>
+        <h1>Pagos</h1>
+        <p>Gestiona tus activos y transferencias de Ethereum.</p>
+      </div>
+
+      <div class="network-chip">
+        <span class="pulse-wrap">
+          <span class="pulse-dot pulse-dot--ping"></span>
+          <span class="pulse-dot"></span>
+        </span>
+        <span>Ethereum Mainnet Conectada</span>
+      </div>
+    </header>
+
+    <section class="grid-layout">
+      <article class="balance-card">
+        <div class="balance-head">
+          <div>
+            <small>Liquidez Disponible</small>
+            <div class="balance-value">
+              <strong>{{ balanceEth() | number: '1.2-2' }}</strong>
+              <span>ETH</span>
+            </div>
+            <p>≈ ${{ balanceUsd() | number: '1.2-2' }} USD</p>
+          </div>
+
+          <div class="wallet-icon">
+            <span class="material-symbols-outlined">account_balance_wallet</span>
+          </div>
+        </div>
+
+        <div class="balance-actions">
+          <button type="button" class="btn btn-gradient">
+            <span class="material-symbols-outlined">add_circle</span>
+            Solicitar Faucet
+          </button>
+          <button type="button" class="btn btn-surface">
+            <span class="material-symbols-outlined">swap_horiz</span>
+            Intercambiar
+          </button>
+        </div>
+      </article>
+
+      <article class="send-card">
+        <h3>
+          <span class="material-symbols-outlined">send</span>
+          Enviar ETH
+        </h3>
+
+        <form class="send-form">
+          <label>
+            <span>Dirección del destinatario</span>
+            <div class="input-row">
+              <span class="material-symbols-outlined">alternate_email</span>
+              <input type="text" placeholder="0x..." />
+            </div>
+          </label>
+
+          <label>
+            <span>Monto (ETH)</span>
+            <div class="input-row">
+              <span class="material-symbols-outlined">token</span>
+              <input type="number" placeholder="0.00" />
+              <button type="button">Máx.</button>
+            </div>
+          </label>
+
+          <button type="submit" class="send-btn">Firmar y enviar transacción</button>
+        </form>
+      </article>
+
+      <article class="transactions-card">
+        <div class="transactions-header">
+          <h3>Transacciones recientes</h3>
+          <button type="button">Ver todo en el explorador</button>
+        </div>
+
+        <div class="transactions-list">
+          @for (transaction of transactions(); track transaction.title + transaction.subtitle) {
+            <div class="transaction-item">
+              <div class="tx-left">
+                <div class="tx-icon" [class.tx-icon--in]="transaction.type === 'faucet'" [class.tx-icon--pending]="transaction.type === 'swap'">
+                  <span class="material-symbols-outlined">
+                    @if (transaction.type === 'sent') { call_made }
+                    @if (transaction.type === 'faucet') { call_received }
+                    @if (transaction.type === 'swap') { history }
+                  </span>
+                </div>
+                <div>
+                  <p class="tx-title">{{ transaction.title }}</p>
+                  <p class="tx-subtitle">{{ transaction.subtitle }}</p>
+                </div>
+              </div>
+
+              <div class="tx-right">
+                <p class="tx-amount" [class.tx-amount--in]="transaction.type === 'faucet'">{{ transaction.amount }}</p>
+                @if (transaction.status === 'confirmed') {
+                  <span class="tx-status tx-status--confirmed">Confirmada</span>
+                }
+                @if (transaction.status === 'pending') {
+                  <span class="tx-status tx-status--pending">
+                    <span class="pending-dot"></span>
+                    Pendiente
+                  </span>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <nav class="mobile-nav">
+    <a href="#" class="active" (click)="$event.preventDefault()">
+      <span class="material-symbols-outlined">payments</span>
+      <span>Pagos</span>
+    </a>
+    <a href="#" (click)="$event.preventDefault()">
+      <span class="material-symbols-outlined">history</span>
+      <span>Historial</span>
+    </a>
+    <a href="#" (click)="$event.preventDefault()">
+      <span class="material-symbols-outlined">verified_user</span>
+      <span>Certificados</span>
+    </a>
+    <a href="#" (click)="$event.preventDefault()">
+      <span class="material-symbols-outlined">fact_check</span>
+      <span>Verificar</span>
+    </a>
+  </nav>
+</div>

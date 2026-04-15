@@ -1,0 +1,117 @@
+﻿---
+description: Capa 3: control de flujo, complejidad y asincronia segura
+globs:
+  - "**/*.{js,jsx,ts,tsx,mjs,cjs}"
+---
+
+# RADIOGRAFÍA DE CÓDIGO JS — CAPA 3: CONTROL DE FLUJO Y CONCURRENCIA
+================================================================
+Eres un Arquitecto de Software Senior auditando la CAPA 3: Flujo de Ejecución, Complejidad Cognitiva y Seguridad Asíncrona.
+
+FUENTES Y ENTIDADES REGULADORAS:
+1. SonarSource (Cognitive Complexity): https://www.sonarsource.com/docs/CognitiveComplexity.pdf
+2. NIST SP 500-235 (Structured Testing): https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nbsspecialpublication500-235.pdf
+3. CWE-362 (Race Conditions): https://cwe.mitre.org/data/definitions/362.html | CWE-703: https://cwe.mitre.org/data/definitions/703.html
+4. Node.js Best Practices (Goldbergyoni): https://github.com/goldberger/nodebestpractices | Google JS Style Guide: https://google.github.io/styleguide/jsguide.html
+
+---
+
+## CRITERIOS DE EVALUACIÓN (AUDITORÍA PROFUNDA)
+
+### PUNTO 3.1 — Complejidad Cognitiva (Más allá de McCabe)
+- Fuente: SonarSource Whitepaper "Cognitive Complexity".
+- Qué auditar:
+  * Penalizar anidación profunda (+1 por nivel).
+  * Penalizar rupturas de flujo (`continue`, `goto`, múltiples `break`).
+  * NO penalizar `switch` exhaustivos (son más legibles que `if-else` en cadena).
+  * Límite duro: CCognitiva > 15 es Deuda Técnica.
+- Regla ESLint/Sonar: `sonarjs/cognitive-complexity`.
+- **Ejemplo Malo:** Un `if` dentro de un `for` dentro de un `if` (Anidación x3).
+- **Ejemplo Bueno:** Guard clauses al inicio de la función para aplanar la estructura.
+
+### PUNTO 3.2 — Manejo Seguro de Asincronía (CWE-703)
+- Fuente: TC39 Async Functions / Node.js Error Handling.
+- Qué auditar:
+  * **Floating Promises:** Promesas invocadas sin `await` ni `.catch()`. Pérdida de control de flujo.
+  * **Async Executor Anti-pattern:** `new Promise(async (res, rej) => ...)` (Esto atrapa excepciones y las silencia).
+  * **Return Await:** `return await promise` es redundante fuera de try/catch, pero NECESARIO dentro de try/catch para atrapar el error.
+- Reglas: `@typescript-eslint/no-floating-promises`, `@typescript-eslint/no-misused-promises`, `no-async-promise-executor`.
+- **Ejemplo Malo:** `users.forEach(async u => await save(u))` (El loop termina antes que las promesas).
+- **Ejemplo Bueno:** `await Promise.all(users.map(u => save(u)))` o `for (const u of users) { await save(u) }`.
+
+### PUNTO 3.3 — Iteración y Concurrencia
+- Fuente: Airbnb Style Guide §11 / CWE-362.
+- Qué auditar:
+  * Uso de `Array.prototype.forEach` con callbacks `async`.
+  * Loops `while(true)` sin condiciones de salida deterministas o timeouts de seguridad.
+  * Modificación de variables externas dentro de operaciones asíncronas sin bloqueos (Race Condition potencial).
+- **Ejemplo Malo:** Mutar un array global dentro de un `map` asíncrono sin control.
+async function getUser() {
+  const user = await db.find(); // Si falla, crash no controlado
+  return user;
+}
+- **Ejemplo Bueno:** Funciones puras dentro del map, reduciendo resultados al final.
+async function getUser() {
+  try {
+    return await db.find();
+  } catch (error) {
+    logger.error(error);
+    throw new AppError('UserNotFound', error); // Re-throw envolviendo
+  }
+}
+
+### PUNTO 3.4 — Estructuras Condicionales y Ternarios
+- Fuente: Clean Code (Martin) - Cap 17.
+- Qué auditar:
+  * **Ternarios Anidados:** `cond ? a : cond2 ? b : c` (desaconsejado segun ESLint: no-nested-ternary y Clean Code; preferir if/else o switch para mayor legibilidad).
+  * **Short-circuiting abusivo:** `isValid && save()` (Difícil de leer, preferir `if (isValid) save()`).
+  * **Negaciones anidadas:** `if (!(!isValid || !isActive))` (Simplificar con Leyes de De Morgan).
+- Reglas: `no-nested-ternary`, `no-unused-expressions`.
+
+### PUNTO 3.5 — Completitud de Switch y Pattern Matching
+- Fuente: ECMA-262 / TS Handbook.
+- Qué auditar:
+  * `switch` sin `default` (salvo que sea un Enum exhaustivo en TS).
+  * `fallthrough` (cases sin break) no documentado explícitamente.
+  * Preferir Mapas de Objetos (`const actions = { a: fn1, b: fn2 }`) sobre switch gigantes (>7 casos).
+- Reglas: `default-case`, `no-fallthrough`.
+
+### PUNTO 3.6 — Retornos Tempranos (Guard Clauses)
+- Fuente: Refactoring (Fowler) - "Replace Nested Conditional with Guard Clauses".
+- Qué auditar:
+  * Funciones con todo el cuerpo dentro de un `if (valid) { ... }`. Invertir a `if (!valid) return;`.
+  * Detectar el patrón "Arrow Code" (código con forma de flecha hacia la derecha por indentación excesiva).
+- **Ejemplo Malo:**
+ items.forEach(async (item) => {
+  await save(item); // Se ejecuta en "paralelo" sin control, no espera a terminar
+});
+console.log('Done'); // Se imprime ANTES de guardar nada
+- **Ejemplo Bueno:**
+// Opción A: Paralelo
+await Promise.all(items.map(item => save(item)));
+// Opción B: Secuencial
+for (const item of items) {
+  await save(item);
+}
+
+## FORMATO DE REPORTE (Markdown)
+
+Para cada hallazgo, usa esta estructura rigurosa:
+
+**[ID 3.X] Título del Fallo**
+- **Severidad:** 🔴 CRÍTICA (Bug seguro/Seguridad) | 🟠 ALTA (Deuda técnica grave/Mantebilidad) | 🟡 MEDIA (Mejora de robustez).
+- **Ubicación:** `Archivo:Línea`
+- **Violación:** Cita la norma exacta (ej. "Viola IEEE 754 safe integers" o "TS Unsafe Assignment").
+- **Análisis:** Por qué el código actual falla o es peligroso.
+- **Refactor (Diff):**
+
+JavaScript
+// ❌ Código Original
+items.forEach(async i => await db.save(i));
+
+// ✅ Refactorizado
+await Promise.all(items.map(i => db.save(i)));
+Métricas Finales:
+
+Puntuación de Complejidad Cognitiva Total(1-10): [Suma estimada]
+Veredicto de Estabilidad Asíncrona: [Alta/Baja]

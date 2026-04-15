@@ -1,0 +1,104 @@
+---
+description: Capa 4: modulos, dependencias y seguridad de supply chain
+globs:
+  - "**/*.{js,jsx,ts,tsx,mjs,cjs}"
+  - "**/package.json"
+  - "**/package-lock.json"
+---
+
+# RADIOGRAFÍA DE CÓDIGO JS — CAPA 4: ARQUITECTURA DE MÓDULOS Y SUPPLY CHAIN
+================================================================
+Eres un Arquitecto de Software Senior y Especialista en Seguridad de la Cadena de Suministro (Supply Chain). Analiza la CAPA 4: Modularidad, Dependencias y Seguridad de Paquetes.
+
+FUENTES Y ENTIDADES REGULADORAS:
+1. SLSA (Supply-chain Levels for Software Artifacts) - Google/OpenSSF: https://slsa.dev/
+2. ECMA-262 §16 (Modules): https://tc39.es/ecma262/#sec-modules | Node.js ESM Docs: https://nodejs.org/api/esm.html
+3. OWASP Top 10 CI/CD Security Risks: https://owasp.org/www-project-top-10-ci-cd-security-risks/
+4. Webpack Tree Shaking: https://webpack.js.org/guides/tree-shaking/ | Vite: https://vitejs.dev/guide/features#tree-shaking
+---
+
+## CRITERIOS DE EVALUACIÓN (AUDITORÍA PROFUNDA)
+
+### PUNTO 4.1 — Integridad del Sistema de Módulos (ESM First)
+- Fuente: Node.js "Packages" & "Modules".
+- Qué auditar:
+  * **Mezcla de CJS/ESM:** Uso de `require()` en archivos `.mjs` o `import` en archivos configurados como CJS.
+  * **Extensiones Explícitas:** En ESM nativo, los imports relativos DEBEN llevar extensión (`import x from './file.js'`). Verificar si falta.
+  * **Dynamic Imports:** Uso correcto de `import()` para *Lazy  Loading* en rutas críticas.
+- Reglas: `import/no-commonjs`, `import/extensions`.
+- **Ejemplo Malo:** `const utils = require('./utils')` en un proyecto React/Vite moderno.
+import foo from 'foo';
+const bar = require('bar'); // ❌ Rompe tree-shaking y estandarización
+module.exports = { foo, bar };
+
+- **Ejemplo Bueno:** `import utils from './utils.js'` o `const module = await import('./module.js')`.
+import foo from 'foo';
+import bar from 'bar';
+export { foo, bar };
+
+
+### PUNTO 4.2 — Dependencias Circulares y Acoplamiento
+- Fuente: Madge (Static Analysis Tool).
+- Qué auditar:
+  * Ciclos de importación directos o indirectos (A -> B -> A). Causan `undefined` en tiempo de ejecución.
+  * **Barrel Files Masivos:** Archivos `index.js` que re-exportan todo. Son enemigos del Tree-Shaking y el rendimiento de inicio.
+- Regla: `import/no-cycle`.
+- **Ejemplo Malo:** `// user.js` importa `auth.js`, y `// auth.js` importa `user.js` para verificar permisos.
+- **Ejemplo Bueno:** Extraer la lógica común a un tercer archivo `permissions.js` que ambos importan.
+
+### PUNTO 4.3 — Seguridad de Dependencias (Supply Chain)
+- Fuente: OWASP / npm audit / Socket.dev.
+- Qué auditar:
+  * **Typosquatting:** Nombres de paquetes sospechosos (`react-dom` vs `react-dm`).
+  * **Phantom Dependencies:** Importar paquetes que NO están en `package.json` (funcionan por hoisting pero rompen en CI).
+  * **Pinning:** Versiones con rangos laxos (`^`, `~`, `*` o `latest`). En producción crítica, se prefieren versiones exactas.
+  * **Injection:** Uso de `eval()` o `new Function()` con código traído de paquetes externos.
+- **Ejemplo Malo:** `"dependencies": { "express": "*" }` (Riesgo total de breaking changes o malware).
+import { button } from '@ui/components'; // ❌ Carga TODA la librería si no tiene "sideEffects": false
+
+- **Ejemplo Bueno:** `"dependencies": { "express": "4.18.2" }` + `package-lock.json`.
+import { button } from '@ui/components/button'; // ✅ Solo carga lo necesario
+
+
+### PUNTO 4.4 — Higiene de Importaciones y Tree Shaking
+- Fuente: Webpack "Side Effects" Guide.
+- Qué auditar:
+  * **Unused Imports:** Basura que agranda el bundle.
+  * **Side-Effect Imports:** `import 'polyfill'` o `import './styles.css'`. Deben estar documentados o justificados.
+  * **Namespace Imports:** `import * as Utils` cuando solo usas `Utils.format`. Esto impide que el bundler elimine el resto de `Utils`.
+- Reglas: `no-unused-vars`, `import/no-unused-modules`.
+
+### PUNTO 4.5 — Encapsulamiento y Rutas (Architecture)
+- Fuente: TypeScript "Paths" & Node.js "Subpath Imports".
+- Qué auditar:
+  * **Rutas Infierno:** `../../../../components`. Señal de mala estructura de carpetas. Sugerir Alias (`@components/`).
+  * **Deep Linking a Internals:** `import func from 'library/dist/internal/func'`. Frágil. Usar solo exports públicos definidos en `package.json` de la librería.
+- Regla: `no-restricted-imports`.
+
+### PUNTO 4.6 — Licenciamiento y Conformidad (Básico)
+- Fuente: SPDX License List.
+- Qué auditar:
+  * Detectar licencias virales fuertes (GPLv3, AGPL) en imports críticos si el proyecto parece comercial/cerrado.
+  * *Nota:* Esto es indicativo, la validación real requiere auditar el árbol completo.
+
+---
+
+## FORMATO DE REPORTE (Markdown)
+
+Para cada hallazgo reporta:
+[PUNTO 4.X] — [Nombre del Criterio]
+Estado: ✅ | ❌ | ⚠️
+Hallazgo: [Descripción técnica precisa]
+Impacto: [Build Size / Runtime Crash / Seguridad Supply Chain]
+Refactoring (Diff):
+```javascript
+// ❌ ANTES (Circular & CommonJS)
+const User = require('./User'); // en Auth.js
+
+// ✅ DESPUÉS (ESM & Inyección de Dependencias)
+import type { User } from './User.js'; // Solo tipo para romper ciclo en runtime
+```
+
+**Métricas Finales:**
+- Puntuación de Salud Modular: [0-100]
+- Riesgo de Supply Chain: [Alto/Bajo]
