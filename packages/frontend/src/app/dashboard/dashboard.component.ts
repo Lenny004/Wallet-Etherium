@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
+import { AuthService } from '../auth/auth.service';
 
 interface TransactionItem {
   type: 'sent' | 'faucet' | 'swap';
@@ -17,6 +18,8 @@ interface TransactionItem {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DashboardComponent {
+  private readonly authService = inject(AuthService);
+
   protected readonly balanceEth = signal(1.25);
   protected readonly balanceUsd = signal(2845.32);
 
@@ -43,4 +46,8 @@ export class DashboardComponent {
       status: 'pending',
     },
   ]);
+
+  protected logout(): void {
+    this.authService.logout();
+  }
 }

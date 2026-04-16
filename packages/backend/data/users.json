@@ -11,6 +11,18 @@
       "vc": "{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],\"type\":[\"VerifiableCredential\",\"WalletCredential\"],\"issuer\":\"did:ethr:0x61A979287cC8b1633B6211bf38941b4FF1F4cADD\",\"credentialSubject\":{\"id\":\"did:ethr:0x61A979287cC8b1633B6211bf38941b4FF1F4cADD\",\"walletAddress\":\"0x61A979287cC8b1633B6211bf38941b4FF1F4cADD\",\"nombre\":\"Ana\",\"apellido\":\"Lopez\",\"rol\":\"Desarrollador\",\"compania\":\"Acme\"}}",
       "seedHash": "$2a$12$HQFrcGPQYrkfjd2KgWuaPe9vNVbj1EIH2PPT1kVtqJGExK.v259UO",
       "createdAt": "2026-04-15T23:49:13.191Z"
+    },
+    {
+      "id": "1776302636632",
+      "nombre": "Lenny",
+      "apellido": "Elias",
+      "rol": "Jefe de Software",
+      "compania": "UFG",
+      "walletAddress": "0xA5b1Ec791ADeBE0c88b417a68d0Db87BdA42cb04",
+      "did": "did:ethr:0xA5b1Ec791ADeBE0c88b417a68d0Db87BdA42cb04",
+      "vc": "{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],\"type\":[\"VerifiableCredential\",\"WalletCredential\"],\"issuer\":\"did:ethr:0xA5b1Ec791ADeBE0c88b417a68d0Db87BdA42cb04\",\"credentialSubject\":{\"id\":\"did:ethr:0xA5b1Ec791ADeBE0c88b417a68d0Db87BdA42cb04\",\"walletAddress\":\"0xA5b1Ec791ADeBE0c88b417a68d0Db87BdA42cb04\",\"nombre\":\"Lenny\",\"apellido\":\"Elias\",\"rol\":\"Jefe de Software\",\"compania\":\"UFG\"}}",
+      "seedHash": "$2a$12$qW2woVRysh0FuNV.rZf05.aTtrDEEhlogh.8gllS6c5GD6mqCyUEK",
+      "createdAt": "2026-04-16T01:23:56.632Z"
     }
   ],
   "siweNonces": []
