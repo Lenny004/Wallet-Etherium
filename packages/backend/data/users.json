@@ -23,6 +23,18 @@
       "vc": "{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],\"type\":[\"VerifiableCredential\",\"WalletCredential\"],\"issuer\":\"did:ethr:0xA5b1Ec791ADeBE0c88b417a68d0Db87BdA42cb04\",\"credentialSubject\":{\"id\":\"did:ethr:0xA5b1Ec791ADeBE0c88b417a68d0Db87BdA42cb04\",\"walletAddress\":\"0xA5b1Ec791ADeBE0c88b417a68d0Db87BdA42cb04\",\"nombre\":\"Lenny\",\"apellido\":\"Elias\",\"rol\":\"Jefe de Software\",\"compania\":\"UFG\"}}",
       "seedHash": "$2a$12$qW2woVRysh0FuNV.rZf05.aTtrDEEhlogh.8gllS6c5GD6mqCyUEK",
       "createdAt": "2026-04-16T01:23:56.632Z"
+    },
+    {
+      "id": "1776303688816",
+      "nombre": "Mario",
+      "apellido": "Aldana",
+      "rol": "Jefe de programación",
+      "compania": "UFG",
+      "walletAddress": "0x431658B80877E9Cff1cC541B5f997317d2Aa604B",
+      "did": "did:ethr:0x431658B80877E9Cff1cC541B5f997317d2Aa604B",
+      "vc": "{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],\"type\":[\"VerifiableCredential\",\"WalletCredential\"],\"issuer\":\"did:ethr:0x431658B80877E9Cff1cC541B5f997317d2Aa604B\",\"credentialSubject\":{\"id\":\"did:ethr:0x431658B80877E9Cff1cC541B5f997317d2Aa604B\",\"walletAddress\":\"0x431658B80877E9Cff1cC541B5f997317d2Aa604B\",\"nombre\":\"Mario\",\"apellido\":\"Aldana\",\"rol\":\"Jefe de programación\",\"compania\":\"UFG\"}}",
+      "seedHash": "$2a$12$lZp2Ae0thQKpviHUD2CCLeqzZM8vqbUh22BEyyt3RM0dPamhRzeIK",
+      "createdAt": "2026-04-16T01:41:28.816Z"
     }
   ],
   "siweNonces": []

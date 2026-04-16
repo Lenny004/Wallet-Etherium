@@ -2,6 +2,21 @@
 
 Aplicación monorepo para autenticación Web3 con flujo completo de registro e inicio de sesión (Wallet + Seed, VC + DID y SIWE).
 
+## Inicio rápido
+
+1. Instalar dependencias del monorepo:
+	- `npm install`
+2. Configurar variables de entorno backend:
+	- Copiar `packages/backend/.env.example` a `packages/backend/.env`
+	- Definir `JWT_SECRET` fuerte y único (mínimo 16 caracteres)
+3. Iniciar backend:
+	- `npm run backend:dev`
+4. Iniciar frontend:
+	- `npm run frontend:start`
+5. Verificar servicios:
+	- Frontend: `http://localhost:4200`
+	- Backend health: `http://localhost:3000/health`
+
 ## Arquitectura
 
 - `packages/frontend` (Angular 21): UI de `login`, `register`, `wallet-credentials`, `dashboard`, guards e interceptor JWT.
@@ -22,30 +37,24 @@ Aplicación monorepo para autenticación Web3 con flujo completo de registro e i
 - Node.js 20+
 - npm 10+
 
-## Setup
-
-1. Instalar dependencias del monorepo:
-	- `npm install`
-2. Configurar backend:
-	- Copiar `packages/backend/.env.example` a `packages/backend/.env`
-	- Definir `JWT_SECRET` fuerte y único
-3. Ejecutar backend:
-	- `npm run backend:dev`
-4. Ejecutar frontend:
-	- `npm run frontend:start`
-5. Abrir:
-	- Frontend: `http://localhost:4200`
-	- Backend health: `http://localhost:3000/health`
-
 ## Variables de entorno (backend)
 
-- `PORT` (default `3000`)
-- `JWT_SECRET` (obligatoria)
-- `JWT_EXPIRES_IN` (default `1h`)
-- `FRONTEND_ORIGIN` (default `http://localhost:4200`)
-- `SIWE_DOMAIN` (default `localhost:4200`)
-- `SIWE_URI` (default `http://localhost:4200`)
-- `SIWE_CHAIN_ID` (default `11155111`)
+Copiar `packages/backend/.env.example` a `packages/backend/.env` y ajustar:
+
+- `PORT` (default: `3000`)
+- `JWT_SECRET` (obligatoria, mínimo `16` caracteres)
+- `JWT_EXPIRES_IN` (default: `1h`)
+- `FRONTEND_ORIGIN` (default: `http://localhost:4200`)
+- `SIWE_DOMAIN` (default: `localhost:4200`)
+- `SIWE_URI` (default: `http://localhost:4200`)
+- `SIWE_CHAIN_ID` (default: `11155111`)
+
+## Scripts útiles
+
+- `npm run backend:dev`
+- `npm run backend:start`
+- `npm run frontend:start`
+- `npm run frontend:build`
 
 ## Seguridad aplicada (MDC)
 
@@ -66,10 +75,3 @@ Aplicación monorepo para autenticación Web3 con flujo completo de registro e i
 	- VC + DID
 	- SIWE con wallet inyectada
 4. JWT se almacena en frontend y se envía por interceptor en `Authorization: Bearer`.
-
-## Scripts útiles
-
-- `npm run backend:dev`
-- `npm run backend:start`
-- `npm run frontend:start`
-- `npm run frontend:build`

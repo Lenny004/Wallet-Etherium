@@ -14,15 +14,24 @@ import { z } from 'zod';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+// Directorio de persistencia local para entorno de desarrollo/demo.
 const dataDir = path.join(__dirname, '..', 'data');
+// Archivo JSON que funciona como store simple de usuarios y nonces SIWE.
 const dataFile = path.join(dataDir, 'users.json');
 
+// Puerto HTTP del backend.
 const port = Number(process.env.PORT ?? 3000);
+// Secreto para firma/verificación de JWT (obligatorio en runtime).
 const jwtSecret = process.env.JWT_SECRET;
+// Duración de expiración del token de sesión.
 const jwtExpiresIn = process.env.JWT_EXPIRES_IN ?? '1h';
+// Origen permitido para CORS en frontend.
 const frontendOrigin = process.env.FRONTEND_ORIGIN ?? 'http://localhost:4200';
+// Dominio visible en el mensaje SIWE que firma el usuario.
 const siweDomain = process.env.SIWE_DOMAIN ?? 'localhost:4200';
+// URI declarada dentro del mensaje SIWE.
 const siweUri = process.env.SIWE_URI ?? 'http://localhost:4200';
+// Chain ID de la red esperada durante autenticación SIWE.
 const siweChainId = Number(process.env.SIWE_CHAIN_ID ?? 11155111);
 
 if (!jwtSecret || jwtSecret.length < 16) {
@@ -81,6 +90,14 @@ const siweLoginSchema = z.object({
   signature: z.string().trim().min(20).max(2000)
 });
 
+/**
+ * Asegura la existencia del archivo de almacenamiento local.
+ *
+ * Crea el directorio de datos si no existe y genera un store inicial
+ * válido cuando el archivo JSON aún no está presente.
+ *
+ * @returns {Promise<void>} Promesa resuelta cuando el store está disponible.
+ */
 async function ensureStore() {
   await fs.mkdir(dataDir, { recursive: true });
   try {
@@ -91,6 +108,12 @@ async function ensureStore() {
   }
 }
 
+/**
+ * Lee y valida el contenido del almacenamiento local.
+ *
+ * @returns {Promise<{users: Array, siweNonces: Array}>} Store validado por Zod.
+ * @throws Error si el JSON está corrupto o no cumple el esquema esperado.
+ */
 async function readStore() {
   await ensureStore();
   const content = await fs.readFile(dataFile, 'utf-8');
@@ -98,10 +121,22 @@ async function readStore() {
   return storeSchema.parse(parsed);
 }
 
+/**
+ * Persiste en disco el estado actual del almacenamiento.
+ *
+ * @param {object} store Estado completo del almacenamiento a guardar.
+ * @returns {Promise<void>} Promesa resuelta cuando la escritura finaliza.
+ */
 async function writeStore(store) {
   await fs.writeFile(dataFile, JSON.stringify(store, null, 2), 'utf-8');
 }
 
+/**
+ * Devuelve solo los campos públicos de un usuario.
+ *
+ * @param {object} user Registro completo interno del usuario.
+ * @returns {{id:number,nombre:string,apellido:string,rol:string,compania:string,walletAddress:string,did:string}} Perfil público serializable.
+ */
 function publicUser(user) {
   return {
     id: Number(user.id),
@@ -114,6 +149,12 @@ function publicUser(user) {
   };
 }
 
+/**
+ * Emite un JWT firmado con los claims de sesión del usuario.
+ *
+ * @param {object} user Usuario autenticado desde almacenamiento.
+ * @returns {string} JWT listo para uso en header Authorization.
+ */
 function issueToken(user) {
   return jwt.sign(
     {
@@ -128,6 +169,12 @@ function issueToken(user) {
   );
 }
 
+/**
+ * Extrae dirección y nonce desde el mensaje SIWE firmado.
+ *
+ * @param {string} message Mensaje SIWE en texto plano.
+ * @returns {{address: string, nonce: string}} Campos críticos para validación.
+ */
 function extractSiweParts(message) {
   const firstLine = message.split('\n')[0] ?? '';
   const addressMatch = firstLine.match(/(0x[a-fA-F0-9]{40})/);
@@ -138,6 +185,17 @@ function extractSiweParts(message) {
   };
 }
 
+/**
+ * Normaliza y valida la VC para comprobar consistencia con el usuario.
+ *
+ * Reglas aplicadas:
+ * - `credentialSubject.id` y `issuer` deben coincidir con el DID del usuario.
+ * - `credentialSubject.walletAddress` debe coincidir con su wallet registrada.
+ *
+ * @param {object} user Usuario registrado en almacenamiento.
+ * @param {string} vcText VC recibida como JSON serializado.
+ * @returns {{did: string, issuer: string, walletAddress: string} | null} VC normalizada si es válida; `null` en caso contrario.
+ */
 function normalizeVcForUser(user, vcText) {
   try {
     const parsed = JSON.parse(vcText);
@@ -399,6 +457,14 @@ app.post('/api/auth/login-siwe', async (req, res, next) => {
   }
 });
 
+/**
+ * Valida token Bearer y carga los claims decodificados en la request.
+ *
+ * @param {import('express').Request} req Solicitud HTTP entrante.
+ * @param {import('express').Response} res Respuesta HTTP.
+ * @param {import('express').NextFunction} next Continuación del pipeline.
+ * @returns {void} Finaliza respuesta 401 o delega en `next()`.
+ */
 function authMiddleware(req, res, next) {
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) {
