@@ -1,4 +1,17 @@
 {
-  "users": [],
+  "users": [
+    {
+      "id": "1776296953191",
+      "nombre": "Ana",
+      "apellido": "Lopez",
+      "rol": "Desarrollador",
+      "compania": "Acme",
+      "walletAddress": "0x61A979287cC8b1633B6211bf38941b4FF1F4cADD",
+      "did": "did:ethr:0x61A979287cC8b1633B6211bf38941b4FF1F4cADD",
+      "vc": "{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],\"type\":[\"VerifiableCredential\",\"WalletCredential\"],\"issuer\":\"did:ethr:0x61A979287cC8b1633B6211bf38941b4FF1F4cADD\",\"credentialSubject\":{\"id\":\"did:ethr:0x61A979287cC8b1633B6211bf38941b4FF1F4cADD\",\"walletAddress\":\"0x61A979287cC8b1633B6211bf38941b4FF1F4cADD\",\"nombre\":\"Ana\",\"apellido\":\"Lopez\",\"rol\":\"Desarrollador\",\"compania\":\"Acme\"}}",
+      "seedHash": "$2a$12$HQFrcGPQYrkfjd2KgWuaPe9vNVbj1EIH2PPT1kVtqJGExK.v259UO",
+      "createdAt": "2026-04-15T23:49:13.191Z"
+    }
+  ],
   "siweNonces": []
 }

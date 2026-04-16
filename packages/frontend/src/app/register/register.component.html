@@ -1,57 +1,104 @@
-<div class="container">
-  <div class="register-card">
-    <h1>Crear Cuenta Web3</h1>
-    <p>Regístrate para generar tu wallet y DID</p>
+<div class="register-shell">
+  <div class="bg-bubble bg-bubble--top" aria-hidden="true"></div>
+  <div class="bg-bubble bg-bubble--bottom" aria-hidden="true"></div>
 
-    <form [formGroup]="form" (ngSubmit)="onSubmit()">
-      <div class="form-field">
-        <label class="form-label">Nombre *:</label>
-        <input type="text" formControlName="nombre" placeholder="Tu nombre" class="form-input">
-        @if (hasError('nombre', 'required')) {
-          <div class="error-text">El nombre es requerido</div>
-        }
-      </div>
+  <main class="register-main">
+    <section class="register-layout">
+      <article class="brand-panel">
+        <div>
+          <div class="brand-header">
+            <div class="brand-icon">
+              <span class="material-symbols-outlined">fingerprint</span>
+            </div>
+            <span class="brand-name">Ethereal Vault</span>
+          </div>
 
-      <div class="form-field">
-        <label class="form-label">Apellido *:</label>
-        <input type="text" formControlName="apellido" placeholder="Tu apellido" class="form-input">
-        @if (hasError('apellido', 'required')) {
-          <div class="error-text">El apellido es requerido</div>
-        }
-      </div>
+          <h1>
+            Protege tu identidad <span>digital</span>.
+          </h1>
 
-      <div class="form-field">
-        <label class="form-label">Rol *:</label>
-        <select formControlName="rol" class="form-input">
-          <option value="">Seleccionar...</option>
-          <option value="Desarrollador">Desarrollador</option>
-          <option value="Gerente">Gerente</option>
-          <option value="Administrador">Administrador</option>
-          <option value="Analista">Analista</option>
-          <option value="Otro">Otro</option>
-        </select>
-        @if (hasError('rol', 'required')) {
-          <div class="error-text">El rol es requerido</div>
-        }
-      </div>
+          <p>
+            Únete a Proyecto_Dev y accede a la plataforma de gestión de activos más segura en la red Ethereum.
+            Vive la intersección entre criptografía y diseño.
+          </p>
+        </div>
 
-      <div class="form-field">
-        <label class="form-label">Compañía *:</label>
-        <input type="text" formControlName="compania" placeholder="Nombre de tu compañía" class="form-input">
-        @if (hasError('compania', 'required')) {
-          <div class="error-text">La compañía es requerida</div>
-        }
-      </div>
+        <div class="verified-node">
+          <div class="node-avatar">
+            <span class="material-symbols-outlined">verified_user</span>
+          </div>
+          <div>
+            <strong>Nodo Verificado</strong>
+            <small>Sesión activa: Protegida</small>
+          </div>
+        </div>
+      </article>
 
-      <button type="submit" [disabled]="form.invalid" class="btn-primary btn">Crear Cuenta</button>
+      <article class="form-panel">
+        <header class="form-header">
+          <h2>Crear Cuenta</h2>
+          <p>Da el paso hacia el futuro de la seguridad de activos.</p>
+        </header>
 
-      @if (error) {
-        <div class="error-text">{{ error }}</div>
-      }
+        <form [formGroup]="registerForm" (ngSubmit)="submitRegister()" class="register-form">
+          <label class="field-row">
+            <span>Nombre completo</span>
+            <div class="input-wrap">
+              <span class="material-symbols-outlined">person</span>
+              <input type="text" formControlName="fullName" placeholder="Ingresa tu nombre y apellido" />
+            </div>
+            @if (hasError('fullName', 'required')) {
+              <small class="field-error">El nombre completo es obligatorio.</small>
+            }
+          </label>
 
-      <div class="link-container">
-        <p>¿Ya tienes cuenta? <a routerLink="/login" class="link">Inicia sesión</a></p>
-      </div>
-    </form>
-  </div>
+          <label class="field-row">
+            <span>Rol profesional</span>
+            <div class="input-wrap">
+              <span class="material-symbols-outlined">work</span>
+              <input type="text" formControlName="role" placeholder="Ej.: Líder de desarrollo" />
+            </div>
+            @if (hasError('role', 'required')) {
+              <small class="field-error">El rol profesional es obligatorio.</small>
+            }
+          </label>
+
+          <label class="field-row">
+            <span>Compañía</span>
+            <div class="input-wrap">
+              <span class="material-symbols-outlined">corporate_fare</span>
+              <input type="text" formControlName="company" placeholder="Tu organización" />
+            </div>
+            @if (hasError('company', 'required')) {
+              <small class="field-error">La compañía es obligatoria.</small>
+            }
+          </label>
+
+          <button type="submit" class="register-btn" [disabled]="registerForm.invalid || loading">
+            <span>{{ loading ? 'Creando cuenta...' : 'Registrarme' }}</span>
+            <span class="material-symbols-outlined">arrow_forward</span>
+          </button>
+
+          @if (error) {
+            <small class="field-error">{{ error }}</small>
+          }
+        </form>
+
+        <footer class="form-footer">
+          <p>
+            ¿Ya eres parte del ecosistema?
+            <a routerLink="/login">Inicia sesión en la Bóveda</a>
+          </p>
+        </footer>
+      </article>
+    </section>
+  </main>
+
+  <footer class="register-footer">
+    <a href="#" (click)="$event.preventDefault()">Protocolo de Privacidad</a>
+    <span>•</span>
+    <a href="#" (click)="$event.preventDefault()">Términos del Servicio</a>
+    <span>•</span>
+    <a href="#" (click)="$event.preventDefault()">Centro de Ayuda</a>
+  </footer>
 </div>

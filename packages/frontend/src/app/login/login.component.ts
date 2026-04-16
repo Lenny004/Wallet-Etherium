@@ -1,31 +1,34 @@
-import { Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../auth/auth.service';
+
+type LoginTab = 'vault' | 'identity' | 'siwe';
 
 @Component({
   selector: 'app-login',
   imports: [ReactiveFormsModule, RouterLink],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LoginComponent {
   private readonly formBuilder = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
 
+  readonly activeTab = signal<LoginTab>('vault');
   error = '';
-  useVcLogin = false;
   siweLoading = false;
 
-  readonly form = this.formBuilder.group({
+  readonly vaultForm = this.formBuilder.group({
     walletAddress: ['', [Validators.required]],
     seedPhrase: ['', [Validators.required, Validators.minLength(20)]],
   });
 
   readonly formVc = this.formBuilder.group({
     did: ['', [Validators.required, Validators.pattern(/^did:ethr:0x[a-fA-F0-9]{40}$/)]],
-    vc: ['', [Validators.required, Validators.minLength(50)]],
+    credential: ['', [Validators.required, Validators.minLength(50)]],
   });
 
   get hasWallet(): boolean {
@@ -35,19 +38,19 @@ export class LoginComponent {
     return Boolean((window as { ethereum?: unknown }).ethereum);
   }
 
-  setLoginMode(useVc: boolean): void {
-    this.useVcLogin = useVc;
+  setTab(tab: LoginTab): void {
+    this.activeTab.set(tab);
     this.error = '';
   }
 
-  onSubmit(): void {
+  submitVault(): void {
     this.error = '';
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
+    if (this.vaultForm.invalid) {
+      this.vaultForm.markAllAsTouched();
       return;
     }
 
-    const { walletAddress, seedPhrase } = this.form.getRawValue();
+    const { walletAddress, seedPhrase } = this.vaultForm.getRawValue();
     if (!walletAddress || !seedPhrase) {
       this.error = 'Completa todos los campos requeridos.';
       return;
@@ -63,24 +66,24 @@ export class LoginComponent {
     });
   }
 
-  onSubmitVc(): void {
+  submitVc(): void {
     this.error = '';
     if (this.formVc.invalid) {
       this.formVc.markAllAsTouched();
       return;
     }
 
-    const { did, vc } = this.formVc.getRawValue();
-    if (!did || !vc) {
+    const { did, credential } = this.formVc.getRawValue();
+    if (!did || !credential) {
       this.error = 'Completa todos los campos requeridos.';
       return;
     }
 
-    let vcPayload: string | object = vc.trim();
+    let vcPayload: string | object = credential.trim();
     try {
       vcPayload = JSON.parse(vcPayload) as object;
     } catch {
-      vcPayload = vc.trim();
+      vcPayload = credential.trim();
     }
 
     this.auth.loginWithVc(did, vcPayload).subscribe({
@@ -93,7 +96,7 @@ export class LoginComponent {
     });
   }
 
-  onLoginWithSiwe(): void {
+  loginSiwe(): void {
     this.error = '';
     this.siweLoading = true;
 
@@ -120,7 +123,7 @@ export class LoginComponent {
   }
 
   hasError(field: string, errorType: string): boolean {
-    const control = this.form.get(field);
+    const control = this.vaultForm.get(field);
     return Boolean(control?.hasError(errorType) && control?.touched);
   }
 
@@ -130,7 +133,7 @@ export class LoginComponent {
   }
 
   hasErrorMinLength(field: string): boolean {
-    const control = this.form.get(field);
+    const control = this.vaultForm.get(field);
     return Boolean(control?.hasError('minlength') && control?.touched);
   }
 }
