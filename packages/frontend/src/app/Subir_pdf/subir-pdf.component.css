@@ -1,0 +1,51 @@
+.module-shell {
+  display: grid;
+  gap: 1rem;
+  padding: 1.2rem;
+  max-width: 900px;
+  margin: 1rem auto;
+}
+
+.drop-zone {
+  border: 2px dashed #7e57c2;
+  border-radius: 12px;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.drop-zone--active {
+  background: #f1ebff;
+}
+
+.contract-input,
+.status-grid {
+  display: grid;
+  gap: 0.4rem;
+}
+
+input,
+button {
+  padding: 0.65rem;
+  border-radius: 8px;
+}
+
+.events-card {
+  border: 1px solid #dedede;
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+ul {
+  margin: 0;
+  padding-left: 1rem;
+  max-height: 220px;
+  overflow: auto;
+}
+
+li {
+  margin-bottom: 0.45rem;
+}
+
+.feedback {
+  font-weight: 600;
+}

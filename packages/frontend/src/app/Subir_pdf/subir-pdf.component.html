@@ -1,0 +1,44 @@
+<section class="module-shell">
+  <header>
+    <h1>Subir_pdf</h1>
+    <p>Tokeniza imágenes en base de datos temporal y promuévelas a mainnet bajo demanda.</p>
+  </header>
+
+  <label class="contract-input">
+    <span>Contrato para validación previa</span>
+    <input [(ngModel)]="contractName" type="text" placeholder="WalletMediaContractV1" />
+  </label>
+
+  <div
+    class="drop-zone"
+    [class.drop-zone--active]="isDragging()"
+    (dragover)="onDragOver($event)"
+    (dragleave)="onDragLeave($event)"
+    (drop)="onDrop($event)"
+  >
+    <p>Arrastra una imagen aquí o selecciónala manualmente.</p>
+    <input type="file" accept="image/*" (change)="onFileSelected($event)" />
+  </div>
+
+  <div class="status-grid">
+    <p><strong>Archivo:</strong> {{ fileName() || 'N/A' }}</p>
+    <p><strong>Token ID:</strong> {{ tokenId() || 'N/A' }}</p>
+    <p><strong>Mainnet tx:</strong> {{ mainnetTxHash() || 'N/A' }}</p>
+  </div>
+
+  <button type="button" (click)="uploadToMainnet()">Subir token a mainnet</button>
+  <p class="feedback">{{ feedback() }}</p>
+
+  <article class="events-card">
+    <h2>Eventos WebSocket (EDA)</h2>
+    <p>Canal: {{ events.connected() ? 'Conectado' : 'Reconectando' }}</p>
+    <ul>
+      @for (event of events.events(); track event.id ?? event.occurredAt) {
+        <li>
+          <strong>{{ event.type }}</strong>
+          <small>{{ event.occurredAt }}</small>
+        </li>
+      }
+    </ul>
+  </article>
+</section>

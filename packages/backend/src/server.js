@@ -3,6 +3,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
+import { createServer } from 'node:http';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -11,6 +12,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { Wallet, verifyMessage, getAddress } from 'ethers';
 import { z } from 'zod';
+import { createBlockchainModule } from './blockchain/framework/create-blockchain-module.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -230,6 +232,7 @@ function normalizeVcForUser(user, vcText) {
 }
 
 const app = express();
+const server = createServer(app);
 
 app.use(helmet());
 app.use(
@@ -256,6 +259,10 @@ app.get('/health', (_req, res) => {
 });
 
 app.use('/api/auth', authLimiter);
+
+const { subirPdfRouter, enviarDineroRouter } = createBlockchainModule({ server });
+app.use('/api/subir-pdf', subirPdfRouter);
+app.use('/api/enviar-dinero', enviarDineroRouter);
 
 app.post('/api/auth/register', async (req, res, next) => {
   try {
@@ -518,6 +525,6 @@ app.use((error, req, res, next) => {
 
 await ensureStore();
 
-app.listen(port, () => {
+server.listen(port, () => {
   console.log(`Wallet backend listening on http://localhost:${port}`);
 });

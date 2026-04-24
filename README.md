@@ -21,7 +21,40 @@ Aplicación monorepo para autenticación Web3 con flujo completo de registro e i
 
 - `packages/frontend` (Angular 21): UI de `login`, `register`, `wallet-credentials`, `dashboard`, guards e interceptor JWT.
 - `packages/backend` (Node.js + Express): API `/api/auth/*` y `/api/me` con validación de entrada, emisión JWT y protección básica anti abuso.
+- `packages/backend/src/blockchain`: solución blockchain modular con Clean Architecture + EDA + WebSocket.
+- `packages/frontend/src/app/Subir_pdf`: módulo de carga drag-and-drop y tokenización temporal de imágenes.
+- `packages/frontend/src/app/Enviar_dinero`: módulo independiente de transferencia de dinero con eventos en tiempo real.
 - `md/layer-*.mdc`: reglas MDC de seguridad, arquitectura y calidad aplicadas durante la migración.
+
+### Clean Architecture + EDA (Blockchain)
+
+La implementación blockchain se organiza por capas y módulos:
+
+- **Entities**: `ImageToken`, `MoneyTransfer`, y eventos de dominio (`domain-events.js`).
+- **Use Cases**: tokenización/subida mainnet en `Subir_pdf`; solicitud/validación/ejecución en `Enviar_dinero`.
+- **Interface Adapters**: controladores HTTP desacoplados por módulo.
+- **Frameworks**: rutas Express, repositorios in-memory, gateway WebSocket y bus de eventos.
+
+Reglas aplicadas:
+
+- Dependencias hacia el centro (Use Cases y Entities no dependen de Express).
+- Comunicación entre módulos exclusivamente por eventos de dominio.
+- Productores/consumidores desacoplados usando `InMemoryEventBus`.
+- Propagación de eventos en tiempo real por `ws://localhost:3000/ws/events`.
+
+### Validación de contrato obligatoria
+
+Antes de ejecutar operaciones blockchain se valida el contrato en:
+
+- `packages/backend/src/contracts/validate-contract.js`
+
+Flujos protegidos:
+
+- Tokenización de imagen (`tokenize-image`)
+- Publicación a mainnet (`publish-mainnet`)
+- Transferencia de dinero (`money-transfer`)
+
+Si falla la validación, se emite `shared.contract_validation_failed` y se bloquea la operación.
 
 ## Endpoints principales
 
@@ -31,6 +64,10 @@ Aplicación monorepo para autenticación Web3 con flujo completo de registro e i
 - `GET /api/auth/siwe-message`
 - `POST /api/auth/login-siwe`
 - `GET /api/me`
+- `POST /api/subir-pdf/tokenize-image`
+- `POST /api/subir-pdf/upload-mainnet`
+- `POST /api/enviar-dinero/request`
+- `GET /ws/events` (WebSocket stream de eventos EDA)
 
 ## Requisitos
 
@@ -55,6 +92,12 @@ Copiar `packages/backend/.env.example` a `packages/backend/.env` y ajustar:
 - `npm run backend:start`
 - `npm run frontend:start`
 - `npm run frontend:build`
+
+## Nuevos flujos UI
+
+- Ruta `/subir-pdf`: drag-and-drop de imágenes, tokenización temporal y promoción a mainnet.
+- Ruta `/enviar-dinero`: solicitud de transferencias con validación contractual previa.
+- Ambas vistas consumen el stream de eventos WebSocket para feedback operativo en tiempo real.
 
 ## Seguridad aplicada (MDC)
 

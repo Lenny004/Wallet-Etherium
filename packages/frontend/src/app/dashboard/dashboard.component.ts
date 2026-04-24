@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
+import { Router } from '@angular/router';
 import { AuthService } from '../auth/auth.service';
 
 interface TransactionItem {
@@ -19,6 +20,7 @@ interface TransactionItem {
 })
 export class DashboardComponent {
   private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
 
   protected readonly balanceEth = signal(1.25);
   protected readonly balanceUsd = signal(2845.32);
@@ -49,5 +51,13 @@ export class DashboardComponent {
 
   protected logout(): void {
     this.authService.logout();
+  }
+
+  protected goToEnviarDinero(): void {
+    void this.router.navigateByUrl('/enviar-dinero');
+  }
+
+  protected goToSubirPdf(): void {
+    void this.router.navigateByUrl('/subir-pdf');
   }
 }

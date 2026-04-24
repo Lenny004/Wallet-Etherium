@@ -1,0 +1,44 @@
+<section class="module-shell">
+  <header>
+    <h1>Enviar_dinero</h1>
+    <p>Flujo independiente con EDA + Clean Architecture y validación de contrato previa.</p>
+  </header>
+
+  <label>
+    <span>Wallet origen</span>
+    <input type="text" [ngModel]="fromAddress()" (ngModelChange)="fromAddress.set($event)" />
+  </label>
+
+  <label>
+    <span>Wallet destino</span>
+    <input type="text" [ngModel]="toAddress()" (ngModelChange)="toAddress.set($event)" />
+  </label>
+
+  <label>
+    <span>Monto ETH</span>
+    <input type="number" [ngModel]="amountEth()" (ngModelChange)="amountEth.set($event)" />
+  </label>
+
+  <label>
+    <span>Contrato para validación</span>
+    <input type="text" [ngModel]="contractName()" (ngModelChange)="contractName.set($event)" />
+  </label>
+
+  <button type="button" (click)="requestTransfer()">Solicitar transferencia</button>
+
+  <p><strong>Transfer ID:</strong> {{ transferId() || 'N/A' }}</p>
+  <p class="feedback">{{ feedback() }}</p>
+
+  <article class="events-card">
+    <h2>Eventos de transacción</h2>
+    <p>Canal: {{ events.connected() ? 'Conectado' : 'Reconectando' }}</p>
+    <ul>
+      @for (event of events.events(); track event.id ?? event.occurredAt) {
+        <li>
+          <strong>{{ event.type }}</strong>
+          <small>{{ event.occurredAt }}</small>
+        </li>
+      }
+    </ul>
+  </article>
+</section>
