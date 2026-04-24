@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { environment } from '../../environments/environment';
 import { EventSocketService } from '../blockchain/event-socket.service';
+import { NotificationService } from '../notifications/notification.service';
 
 interface TokenizedImageResponse {
   tokenId: string;
@@ -16,11 +17,12 @@ interface TokenizedImageResponse {
   selector: 'app-subir-pdf',
   imports: [FormsModule],
   templateUrl: './subir-pdf.component.html',
-  styleUrl: './subir-pdf.component.css',
+  styleUrl: '../dashboard/dashboard-section.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SubirPdfComponent {
   private readonly http = inject(HttpClient);
+  private readonly notify = inject(NotificationService);
   protected readonly events = inject(EventSocketService);
 
   protected readonly isDragging = signal(false);
@@ -68,6 +70,7 @@ export class SubirPdfComponent {
     const tokenId = this.tokenId();
     if (!tokenId) {
       this.feedback.set('Primero tokeniza una imagen.');
+      this.notify.toastWarning('Primero tokeniza una imagen.');
       return;
     }
 
@@ -80,9 +83,12 @@ export class SubirPdfComponent {
         next: (response) => {
           this.mainnetTxHash.set(response.txHash ?? '');
           this.feedback.set('Imagen publicada en mainnet correctamente.');
+          this.notify.toastSuccess('Publicación en mainnet registrada.');
         },
         error: (error: { error?: { message?: string } }) => {
-          this.feedback.set(error.error?.message ?? 'No se pudo publicar en mainnet.');
+          const msg = error.error?.message ?? 'No se pudo publicar en mainnet.';
+          this.feedback.set(msg);
+          this.notify.toastError(msg);
         }
       });
   }
@@ -103,9 +109,12 @@ export class SubirPdfComponent {
         next: (response) => {
           this.tokenId.set(response.tokenId);
           this.feedback.set(`Imagen tokenizada: ${response.tokenId}`);
+          this.notify.toastSuccess(`Token ID: ${response.tokenId}`);
         },
         error: (error: { error?: { message?: string } }) => {
-          this.feedback.set(error.error?.message ?? 'No se pudo tokenizar la imagen.');
+          const msg = error.error?.message ?? 'No se pudo tokenizar la imagen.';
+          this.feedback.set(msg);
+          this.notify.toastError(msg);
         }
       });
   }

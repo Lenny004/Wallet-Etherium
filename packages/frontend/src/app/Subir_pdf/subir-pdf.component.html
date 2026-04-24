@@ -1,14 +1,29 @@
-<section class="module-shell">
-  <header>
-    <h1>Subir_pdf</h1>
-    <p>Tokeniza imágenes en base de datos temporal y promuévelas a mainnet bajo demanda.</p>
-  </header>
+<header class="content-header">
+  <div>
+    <h1>Subir PDF</h1>
+    <p>Tokeniza imágenes en base de datos temporal y promuévelas a mainnet bajo demanda (EDA + validación de contrato).</p>
+  </div>
+</header>
 
-  <label class="contract-input">
-    <span>Contrato para validación previa</span>
-    <input [(ngModel)]="contractName" type="text" placeholder="WalletMediaContractV1" />
-  </label>
+<section class="panel">
+  <h2>Contrato para validación previa</h2>
+  <p>El backend ejecuta <code>validate-contract.js</code> antes de tokenizar o publicar.</p>
+  <div class="verify-form">
+    <label>
+      <span>Nombre del contrato</span>
+      <input
+        type="text"
+        [ngModel]="contractName()"
+        (ngModelChange)="contractName.set($event)"
+        placeholder="WalletMediaContractV1"
+      />
+    </label>
+  </div>
+</section>
 
+<section class="panel">
+  <h2>Carga de imagen</h2>
+  <p>Arrastra una imagen aquí o selecciónala manualmente.</p>
   <div
     class="drop-zone"
     [class.drop-zone--active]="isDragging()"
@@ -16,29 +31,35 @@
     (dragleave)="onDragLeave($event)"
     (drop)="onDrop($event)"
   >
-    <p>Arrastra una imagen aquí o selecciónala manualmente.</p>
+    <p>Suelta el archivo o usa el selector.</p>
     <input type="file" accept="image/*" (change)="onFileSelected($event)" />
   </div>
+</section>
 
+<section class="panel">
+  <h2>Estado y publicación</h2>
   <div class="status-grid">
     <p><strong>Archivo:</strong> {{ fileName() || 'N/A' }}</p>
     <p><strong>Token ID:</strong> {{ tokenId() || 'N/A' }}</p>
     <p><strong>Mainnet tx:</strong> {{ mainnetTxHash() || 'N/A' }}</p>
   </div>
-
-  <button type="button" (click)="uploadToMainnet()">Subir token a mainnet</button>
+  <div class="verify-actions">
+    <button type="button" class="btn btn-primary" (click)="uploadToMainnet()">Subir token a mainnet</button>
+  </div>
   <p class="feedback">{{ feedback() }}</p>
+</section>
 
-  <article class="events-card">
-    <h2>Eventos WebSocket (EDA)</h2>
-    <p>Canal: {{ events.connected() ? 'Conectado' : 'Reconectando' }}</p>
-    <ul>
-      @for (event of events.events(); track event.id ?? event.occurredAt) {
-        <li>
-          <strong>{{ event.type }}</strong>
-          <small>{{ event.occurredAt }}</small>
-        </li>
-      }
-    </ul>
-  </article>
+<section class="panel">
+  <h2>Eventos WebSocket (EDA)</h2>
+  <p>Canal: {{ events.connected() ? 'Conectado' : 'Reconectando' }}</p>
+  <div class="event-feed">
+    @for (event of events.events(); track event.id ?? event.type + event.occurredAt) {
+      <div class="event-row">
+        <small>{{ event.occurredAt }}</small>
+        <strong>{{ event.type }}</strong>
+      </div>
+    } @empty {
+      <p>Aún no hay eventos en esta sesión.</p>
+    }
+  </div>
 </section>

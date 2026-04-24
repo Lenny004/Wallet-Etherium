@@ -102,23 +102,132 @@ body {
 	padding: 0 2rem;
 }
 
-.btn-primary {
-	color: var(--white);
+/* Botones: base + variantes (dashboard, módulos, <a class="btn">) */
+.btn,
+a.btn,
+button.btn {
 	border: none;
-	padding: 1.2rem 2.4rem;
-	border-radius: 0.4rem;
+	border-radius: var(--radius-xl);
+	font-weight: 700;
+	font-family: var(--font-headline);
 	cursor: pointer;
+	padding: 1.2rem 1.8rem;
+	font-size: 1.5rem;
+	text-decoration: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.6rem;
+	box-sizing: border-box;
+	transition:
+		background-color 0.2s ease,
+		filter 0.15s ease,
+		opacity 0.2s ease;
 }
 
-.btn {
-	font-size: var(--xs);
-	font-weight: 600;
-	transition: background-color 0.3s ease;
-}
-
-.btn-primary:disabled {
-	background-color: var(--primary-color);
+.btn:disabled {
+	opacity: 0.55;
 	cursor: not-allowed;
+}
+
+.btn.btn-primary {
+	background: linear-gradient(135deg, var(--color-primary), var(--color-primary-container));
+	color: var(--color-on-primary-fixed);
+}
+
+.btn.btn-primary:hover:not(:disabled) {
+	filter: brightness(1.07);
+}
+
+.btn.btn-surface {
+	background: var(--color-surface-container-highest);
+	color: var(--color-primary);
+}
+
+.btn.btn-surface:hover:not(:disabled) {
+	filter: brightness(1.08);
+}
+
+.btn--sm {
+	padding: 0.6rem 1rem;
+	font-size: 1.2rem;
+}
+
+.btn.btn-block {
+	width: 100%;
+	border-radius: var(--radius-lg);
+	padding: 1rem 1.8rem;
+	font-size: var(--md);
+	font-weight: 600;
+	margin-top: 0.5rem;
+}
+
+/* Panel: bloques de contenido (dashboard, Subir_pdf, Enviar_dinero, etc.) */
+.panel {
+	border-radius: var(--radius-xl);
+	padding: 2rem;
+	background: var(--color-surface-container-low);
+	border: 1px solid color-mix(in srgb, var(--color-outline-variant) 30%, transparent);
+	margin-bottom: 2rem;
+}
+
+.panel h2 {
+	font: 700 2rem/1 var(--font-headline);
+	color: var(--color-primary);
+	margin: 0 0 1rem;
+}
+
+.panel p {
+	margin: 0 0 1.2rem;
+	color: var(--color-on-surface-variant);
+	font-size: 1.4rem;
+	line-height: 1.5;
+}
+
+.panel .feedback {
+	margin-top: 1.2rem;
+	font-weight: 600;
+	font-size: 1.4rem;
+	color: var(--color-on-surface);
+}
+
+/* Label en cuadrícula: span (texto) + input/textarea — dashboard y módulos */
+.verify-form {
+	display: grid;
+	gap: var(--lg);
+	margin-top: 1rem;
+}
+
+.verify-form label,
+label.field-stack {
+	display: grid;
+	gap: 0.5rem;
+}
+
+.verify-form label > span,
+label.field-stack > span,
+.module-shell label.module-field > span {
+	font-size: var(--sm);
+	font-weight: 600;
+	font-family: var(--font-label);
+	color: var(--color-on-surface-variant);
+	line-height: 1.35;
+}
+
+.verify-form input,
+.verify-form textarea {
+	border-radius: var(--radius-xl);
+	padding: 1rem;
+	border: 1px solid color-mix(in srgb, var(--color-outline-variant) 40%, transparent);
+	background: var(--color-surface-container);
+	color: var(--color-on-surface);
+	font: 600 1.4rem/1 var(--font-body);
+}
+
+.verify-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1rem;
 }
 
 .form-field {
@@ -129,14 +238,15 @@ body {
 	display: block;
 	margin-bottom: 0.4rem;
 	font-weight: 500;
-	font-size: var(--xs);
+	font-size: var(--sm);
+	font-family: var(--font-label);
 }
 
 .form-input {
 	width: 100%;
 	padding: 1.2rem;
 	border: 1px solid var(--input-border);
-	font-size: var(--sm);
+	font-size: var(--md);
 	background-color: var(--input);
 	color: var(--black);
 	border-radius: 0.5rem;
@@ -151,10 +261,322 @@ body {
 
 .error-text {
 	color: var(--error-color);
-	font-size: var(--xs);
+	font-size: var(--sm);
 	margin-top: 0.4rem;
+}
+
+/* ——— Patrones de página (auth, credenciales, módulos) ——— */
+
+.ui-page-center {
+	min-height: 100vh;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	padding: 2rem;
+}
+
+.ui-panel-surface {
+	background: var(--white);
+	border-radius: var(--radius-xl);
+	padding: 2.5rem;
+	max-width: 70rem;
+	width: 100%;
+	box-shadow: var(--shadow);
+	color: var(--black);
+}
+
+.ui-header-center {
+	text-align: center;
+	margin-bottom: 2rem;
+}
+
+.ui-title-hero {
+	font-family: var(--font-headline);
+	font-size: var(--lg);
+	font-weight: 700;
+	color: var(--black);
+	margin: 0 0 0.5rem;
+	line-height: 1.15;
+}
+
+.ui-subtitle {
+	margin: 0;
+	font-size: var(--md);
+	color: var(--text-muted);
+	line-height: 1.5;
+}
+
+.ui-callout {
+	border-radius: 0.8rem;
+	padding: 1rem;
+	margin-bottom: 2rem;
+	line-height: 1.6;
+	font-size: var(--sm);
+}
+
+.ui-callout--accent {
+	background: color-mix(in srgb, var(--color-tertiary-container) 28%, var(--white));
+	border: 1px solid color-mix(in srgb, var(--color-tertiary-container) 65%, var(--color-outline));
+	border-left: 0.45rem solid var(--color-tertiary-container);
+	box-shadow:
+		0 0 0 1px color-mix(in srgb, var(--color-tertiary-container) 25%, transparent),
+		0 0.6rem 1.8rem color-mix(in srgb, var(--color-surface-container-lowest) 55%, transparent);
+	color: var(--color-on-surface);
+	font-size: var(--md);
+	font-weight: 600;
+	padding: 1.3rem 1.5rem 1.3rem 1.4rem;
+}
+
+.ui-callout--accent p {
+	margin: 0;
+	line-height: 1.6;
+}
+
+.ui-callout--accent strong {
+	color: var(--color-tertiary-container);
+	font-weight: 800;
+	font-size: 1.05em;
+	letter-spacing: 0.02em;
+}
+
+.ui-field-stack {
+	display: flex;
+	flex-direction: column;
+	gap: 1.5rem;
+	margin-bottom: 1.5rem;
+}
+
+.ui-field-stack:last-of-type {
+	margin-bottom: 0;
+}
+
+.ui-field-label {
+	display: block;
+	font-weight: 600;
+	color: var(--black);
+	margin-bottom: 0.5rem;
+	font-size: var(--sm);
+	font-family: var(--font-label);
+}
+
+.ui-credential-row {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	background: var(--input);
+	border: 1px solid var(--input-border);
+	border-radius: 0.8rem;
+	padding: 1rem;
+}
+
+.ui-credential-row--stack {
+	flex-direction: column;
+	align-items: stretch;
+}
+
+.ui-mono {
+	flex: 1;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+	font-size: var(--sm);
+	color: var(--black);
+	overflow-wrap: anywhere;
+	line-height: 1.35;
+}
+
+.ui-hint {
+	margin: 0.5rem 0 0;
+	font-size: var(--sm);
+	color: var(--text-muted);
+	line-height: 1.5;
+}
+
+.btn-copy {
+	background: var(--primary-color);
+	color: var(--white);
+	border: none;
+	border-radius: 0.6rem;
+	padding: 0.5rem 1rem;
+	cursor: pointer;
+	font-size: var(--sm);
+	font-weight: 600;
+	font-family: var(--font-label);
+	white-space: nowrap;
+	transition: background-color 0.2s ease;
+}
+
+.btn-copy:hover {
+	background: var(--primary-color-hv);
+}
+
+.btn-copy.copied {
+	background: var(--color-secondary-container);
+}
+
+/* Módulos simples (Subir_pdf, Enviar_dinero) */
+.module-shell {
+	display: grid;
+	gap: 1.4rem;
+	padding: 1.6rem;
+	max-width: 90rem;
+	margin: 1.6rem auto;
+	color: var(--color-on-surface);
+}
+
+.module-shell > header h1 {
+	margin: 0 0 0.4rem;
+	font-family: var(--font-headline);
+	font-size: var(--lg);
+	font-weight: 700;
+	color: var(--color-primary);
+	line-height: 1.15;
+}
+
+.module-shell > header p {
+	margin: 0;
+	font-size: var(--md);
+	color: var(--color-on-surface-variant);
+	line-height: 1.6;
+	max-width: 60rem;
+}
+
+.module-shell label.module-field {
+	display: grid;
+	gap: 0.6rem;
+}
+
+.module-shell input[type='text'],
+.module-shell input[type='number'],
+.module-shell input[type='file'] {
+	padding: 1rem 1.2rem;
+	border-radius: var(--radius-lg);
+	border: 1px solid var(--input-border);
+	background: var(--color-surface-container-highest);
+	color: var(--color-on-surface);
+	font-size: var(--md);
+	font-family: var(--font-body);
+}
+
+.module-shell input[type='file'] {
+	padding: 0.8rem;
+}
+
+.module-shell > button[type='button'] {
+	justify-self: start;
+	padding: 1rem 1.8rem;
+	border-radius: var(--radius-lg);
+	border: none;
+	cursor: pointer;
+	font-size: var(--md);
+	font-weight: 700;
+	font-family: var(--font-headline);
+	background: linear-gradient(135deg, var(--color-primary), var(--color-primary-container));
+	color: var(--color-on-primary);
+}
+
+.module-shell .events-card {
+	border: 1px solid color-mix(in srgb, var(--color-outline-variant) 45%, transparent);
+	border-radius: var(--radius-xl);
+	padding: 1.4rem;
+	background: var(--color-surface-container-low);
+}
+
+.module-shell .events-card h2 {
+	margin: 0 0 0.6rem;
+	font-size: var(--md);
+	font-family: var(--font-headline);
+	color: var(--color-primary);
+}
+
+.module-shell .events-card > p {
+	margin: 0 0 0.8rem;
+	font-size: var(--sm);
+	color: var(--color-on-surface-variant);
+}
+
+.module-shell .events-card ul {
+	margin: 0;
+	padding-left: 1.2rem;
+	max-height: 22rem;
+	overflow: auto;
+	font-size: var(--sm);
+}
+
+.module-shell .events-card li {
+	margin-bottom: 0.5rem;
+	line-height: 1.5;
+}
+
+.module-shell .events-card li small {
+	display: block;
+	font-size: var(--xs);
+	color: var(--color-on-surface-variant);
+	margin-top: 0.2rem;
+}
+
+.module-shell .feedback {
+	font-weight: 600;
+	font-size: var(--md);
+	color: var(--color-on-surface);
+}
+
+/* Etiquetas de formulario en mayúsculas (login / register) */
+.field-label-caps {
+	font-family: var(--font-label);
+	font-size: var(--xs);
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.16em;
+}
+
+.module-shell .drop-zone {
+	border: 2px dashed color-mix(in srgb, var(--color-secondary-container) 65%, var(--color-outline));
+	border-radius: var(--radius-xl);
+	padding: 2rem;
+	text-align: center;
+	font-size: var(--md);
+	color: var(--color-on-surface-variant);
+	transition:
+		background 0.2s ease,
+		border-color 0.2s ease;
+}
+
+.module-shell .drop-zone--active {
+	background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+	border-color: var(--color-primary-container);
 }
 
 .material-symbols-outlined {
 	font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* SweetAlert2 alineado con la tipografía del tema */
+.app-swal-popup {
+	font-family: var(--font-body);
+	border-radius: var(--radius-xl);
+	border: 1px solid color-mix(in srgb, var(--color-outline-variant) 55%, transparent);
+}
+
+.app-swal-title {
+	font-family: var(--font-headline);
+	font-weight: 700;
+}
+
+.app-swal-body {
+	font-size: var(--md);
+	line-height: 1.6;
+}
+
+.app-swal-confirm,
+.app-swal-cancel {
+	font-family: var(--font-label);
+	font-weight: 600;
+	border-radius: var(--radius-lg) !important;
+}
+
+.app-swal-confirm {
+	color: var(--color-on-primary) !important;
+}
+
+.swal2-timer-progress-bar {
+	background: var(--color-primary-container) !important;
 }

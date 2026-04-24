@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { environment } from '../../environments/environment';
 import { EventSocketService } from '../blockchain/event-socket.service';
+import { NotificationService } from '../notifications/notification.service';
 
 interface MoneyTransferResponse {
   transferId: string;
@@ -13,11 +14,12 @@ interface MoneyTransferResponse {
   selector: 'app-enviar-dinero',
   imports: [FormsModule],
   templateUrl: './enviar-dinero.component.html',
-  styleUrl: './enviar-dinero.component.css',
+  styleUrl: '../dashboard/dashboard-section.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EnviarDineroComponent {
   private readonly http = inject(HttpClient);
+  private readonly notify = inject(NotificationService);
   protected readonly events = inject(EventSocketService);
 
   protected readonly fromAddress = signal('0x0000000000000000000000000000000000000001');
@@ -43,9 +45,12 @@ export class EnviarDineroComponent {
         next: (response) => {
           this.transferId.set(response.transferId);
           this.feedback.set('Transferencia solicitada. Sigue los eventos en tiempo real.');
+          this.notify.toastSuccess('Transferencia solicitada. Revisa los eventos en vivo.');
         },
         error: (error: { error?: { message?: string } }) => {
-          this.feedback.set(error.error?.message ?? 'No se pudo iniciar la transferencia.');
+          const msg = error.error?.message ?? 'No se pudo iniciar la transferencia.';
+          this.feedback.set(msg);
+          this.notify.toastError(msg);
         }
       });
   }

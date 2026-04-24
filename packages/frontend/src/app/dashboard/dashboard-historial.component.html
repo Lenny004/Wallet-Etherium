@@ -1,0 +1,32 @@
+<header class="content-header">
+  <div>
+    <h1>Historial</h1>
+    <p>Movimientos locales y flujo en tiempo real del bus EDA (tokenización, mainnet, transferencias).</p>
+  </div>
+</header>
+
+<section class="panel">
+  <h2>Actividad reciente (WebSocket)</h2>
+  <p>
+    Los eventos llegan desde el stream WebSocket cuando usas
+    <span class="inline-actions">
+      <a routerLink="/dashboard/subir-pdf" class="btn btn-surface btn--sm">Subir PDF</a>
+      <a routerLink="/dashboard/enviar-dinero" class="btn btn-surface btn--sm">Enviar dinero</a>
+    </span>
+    .
+  </p>
+  @if (!events.connected()) {
+    <p>Conectando al stream de eventos…</p>
+  }
+  <div class="event-feed">
+    @for (ev of events.events(); track ev.id ?? ev.type + ev.occurredAt) {
+      <div class="event-row">
+        <small>{{ ev.occurredAt }}</small>
+        <strong>{{ eventTitle(ev) }}</strong>
+        <span style="font-size:1.1rem;color:var(--color-on-surface-variant);word-break:break-word">{{ ev.payload | json }}</span>
+      </div>
+    } @empty {
+      <p>Aún no hay eventos. Ejecuta una operación en los módulos blockchain.</p>
+    }
+  </div>
+</section>

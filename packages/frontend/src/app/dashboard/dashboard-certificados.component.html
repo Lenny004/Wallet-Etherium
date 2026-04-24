@@ -1,0 +1,25 @@
+<header class="content-header">
+  <div>
+    <h1>Certificados</h1>
+    <p>Resumen de credenciales y certificados asociados a tu identidad en el monorepo.</p>
+  </div>
+</header>
+
+<section class="panel">
+  <h2>Tus credenciales</h2>
+  <p>
+    El detalle completo (seed, DID, VC) se gestiona en la pantalla de registro y en
+    <button type="button" class="btn btn-surface" (click)="goToCredentials()">wallet-credentials</button>.
+  </p>
+  <div class="cert-list">
+    @for (row of rows; track row.name) {
+      <div class="cert-item">
+        <div>
+          <strong>{{ row.name }}</strong>
+          <span>{{ row.issuer }}</span>
+        </div>
+        <span class="badge">{{ row.status }}</span>
+      </div>
+    }
+  </div>
+</section>

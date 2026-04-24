@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../auth/auth.service';
+import { NotificationService } from '../notifications/notification.service';
 
 type LoginTab = 'vault' | 'identity' | 'siwe';
 
@@ -16,6 +17,7 @@ export class LoginComponent {
   private readonly formBuilder = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly notify = inject(NotificationService);
 
   readonly activeTab = signal<LoginTab>('vault');
   error = '';
@@ -58,10 +60,12 @@ export class LoginComponent {
 
     this.auth.login(walletAddress, seedPhrase).subscribe({
       next: () => {
+        this.notify.toastSuccess('Sesión iniciada correctamente.');
         void this.router.navigateByUrl('/dashboard');
       },
       error: (errorResponse: { error?: { message?: string } }) => {
-        this.error = errorResponse?.error?.message ?? 'Error de autenticación.';
+        this.error = '';
+        this.notify.toastError(errorResponse?.error?.message ?? 'Error de autenticación.');
       },
     });
   }
@@ -88,10 +92,12 @@ export class LoginComponent {
 
     this.auth.loginWithVc(did, vcPayload).subscribe({
       next: () => {
+        this.notify.toastSuccess('Credencial verificada. Bienvenido.');
         void this.router.navigateByUrl('/dashboard');
       },
       error: (errorResponse: { error?: { message?: string } }) => {
-        this.error = errorResponse?.error?.message ?? 'No se pudo verificar la credencial.';
+        this.error = '';
+        this.notify.toastError(errorResponse?.error?.message ?? 'No se pudo verificar la credencial.');
       },
     });
   }
@@ -102,18 +108,20 @@ export class LoginComponent {
 
     this.auth.loginWithSiwe().subscribe({
       next: () => {
+        this.notify.toastSuccess('Conectado con tu wallet.');
         void this.router.navigateByUrl('/dashboard');
       },
       error: (errorResponse: { error?: { message?: string }; message?: string; status?: number }) => {
+        this.error = '';
+        let message = 'Error al iniciar sesión con wallet.';
         if (errorResponse?.error?.message) {
-          this.error = errorResponse.error.message;
-        } else if (errorResponse?.message) {
-          this.error = errorResponse.message;
+          message = errorResponse.error.message;
+        } else if (typeof errorResponse?.message === 'string') {
+          message = errorResponse.message;
         } else if (errorResponse?.status === 0) {
-          this.error = 'No se pudo conectar con el backend.';
-        } else {
-          this.error = 'Error al iniciar sesión con wallet.';
+          message = 'No se pudo conectar con el backend.';
         }
+        this.notify.toastError(message);
         this.siweLoading = false;
       },
       complete: () => {

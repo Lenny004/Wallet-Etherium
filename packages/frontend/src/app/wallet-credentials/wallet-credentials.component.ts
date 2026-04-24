@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { NotificationService } from '../notifications/notification.service';
 
 @Component({
   selector: 'app-wallet-credentials',
@@ -10,6 +11,7 @@ import { Router } from '@angular/router';
 })
 export class WalletCredentialsComponent implements OnInit {
   private readonly router = inject(Router);
+  private readonly notify = inject(NotificationService);
   private readonly credentialsStorageKey = 'wallet_credentials';
 
   walletAddress = '';
@@ -102,6 +104,7 @@ export class WalletCredentialsComponent implements OnInit {
 
   private markCopied(field: string): void {
     this.copied[field] = true;
+    this.notify.toastSuccess('Copiado al portapapeles');
     setTimeout(() => {
       this.copied[field] = false;
     }, 2000);

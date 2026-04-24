@@ -1,0 +1,32 @@
+<header class="content-header">
+  <div>
+    <h1>Verificar</h1>
+    <p>Comprueba integridad de credenciales, hashes de documentos o evidencias antes de operar on-chain.</p>
+  </div>
+</header>
+
+<section class="panel">
+  <h2>Verificación de evidencia</h2>
+  <p>
+    Tras registrar la wallet, tus credenciales quedan en
+    <button type="button" class="btn btn-surface" (click)="goToWalletCredentials()">wallet-credentials</button>.
+    Aquí puedes pegar un hash (SHA-256), un <code>tokenId</code> o un identificador de transferencia para ensayar el flujo de verificación en la UI.
+  </p>
+  <div class="verify-form">
+    <label>
+      <span>Hash o identificador</span>
+      <textarea
+        rows="3"
+        [ngModel]="digest()"
+        (ngModelChange)="digest.set($event)"
+        placeholder="0x… o token UUID"
+      ></textarea>
+    </label>
+    <div class="verify-actions">
+      <button type="button" class="btn btn-primary" (click)="runVerification()">Verificar</button>
+    </div>
+  </div>
+  @if (result()) {
+    <p style="margin-top:1.6rem">{{ result() }}</p>
+  }
+</section>

@@ -1,44 +1,55 @@
-<section class="module-shell">
-  <header>
+<header class="content-header">
+  <div>
     <h1>Enviar_dinero</h1>
-    <p>Flujo independiente con EDA + Clean Architecture y validación de contrato previa.</p>
-  </header>
+    <p>Flujo con EDA, Clean Architecture y validación contractual previa a la operación.</p>
+  </div>
+</header>
 
-  <label>
-    <span>Wallet origen</span>
-    <input type="text" [ngModel]="fromAddress()" (ngModelChange)="fromAddress.set($event)" />
-  </label>
+<section class="panel">
+  <h2>Datos de la transferencia</h2>
+  <p>Completa origen, destino y monto. El servidor valida el contrato antes de continuar.</p>
+  <div class="verify-form">
+    <label>
+      <span>Wallet origen</span>
+      <input type="text" [ngModel]="fromAddress()" (ngModelChange)="fromAddress.set($event)" />
+    </label>
+    <label>
+      <span>Wallet destino</span>
+      <input type="text" [ngModel]="toAddress()" (ngModelChange)="toAddress.set($event)" />
+    </label>
+    <label>
+      <span>Monto (ETH)</span>
+      <input type="number" [ngModel]="amountEth()" (ngModelChange)="amountEth.set($event)" />
+    </label>
+    <label>
+      <span>Contrato para validación</span>
+      <input type="text" [ngModel]="contractName()" (ngModelChange)="contractName.set($event)" />
+    </label>
+    <div class="verify-actions">
+      <button type="button" class="btn btn-primary" (click)="requestTransfer()">Solicitar transferencia</button>
+    </div>
+  </div>
+</section>
 
-  <label>
-    <span>Wallet destino</span>
-    <input type="text" [ngModel]="toAddress()" (ngModelChange)="toAddress.set($event)" />
-  </label>
-
-  <label>
-    <span>Monto ETH</span>
-    <input type="number" [ngModel]="amountEth()" (ngModelChange)="amountEth.set($event)" />
-  </label>
-
-  <label>
-    <span>Contrato para validación</span>
-    <input type="text" [ngModel]="contractName()" (ngModelChange)="contractName.set($event)" />
-  </label>
-
-  <button type="button" (click)="requestTransfer()">Solicitar transferencia</button>
-
-  <p><strong>Transfer ID:</strong> {{ transferId() || 'N/A' }}</p>
+<section class="panel">
+  <h2>Resultado</h2>
+  <div class="status-grid">
+    <p><strong>Transfer ID:</strong> {{ transferId() || 'N/A' }}</p>
+  </div>
   <p class="feedback">{{ feedback() }}</p>
+</section>
 
-  <article class="events-card">
-    <h2>Eventos de transacción</h2>
-    <p>Canal: {{ events.connected() ? 'Conectado' : 'Reconectando' }}</p>
-    <ul>
-      @for (event of events.events(); track event.id ?? event.occurredAt) {
-        <li>
-          <strong>{{ event.type }}</strong>
-          <small>{{ event.occurredAt }}</small>
-        </li>
-      }
-    </ul>
-  </article>
+<section class="panel">
+  <h2>Eventos de transacción</h2>
+  <p>Canal: {{ events.connected() ? 'Conectado' : 'Reconectando' }}</p>
+  <div class="event-feed">
+    @for (event of events.events(); track event.id ?? event.type + event.occurredAt) {
+      <div class="event-row">
+        <small>{{ event.occurredAt }}</small>
+        <strong>{{ event.type }}</strong>
+      </div>
+    } @empty {
+      <p>Aún no hay eventos en esta sesión.</p>
+    }
+  </div>
 </section>

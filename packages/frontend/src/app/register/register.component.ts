@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../auth/auth.service';
+import { NotificationService } from '../notifications/notification.service';
 
 @Component({
   selector: 'app-register',
@@ -13,6 +14,7 @@ export class RegisterComponent {
   private readonly formBuilder = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly notify = inject(NotificationService);
   private readonly credentialsStorageKey = 'wallet_credentials';
 
   error = '';
@@ -59,6 +61,7 @@ export class RegisterComponent {
 
         sessionStorage.setItem(this.credentialsStorageKey, JSON.stringify(credentials));
 
+        this.notify.toastSuccess('Registro completado. Guarda tus credenciales en el siguiente paso.');
         void this.router.navigate(['/wallet-credentials'], {
           state: credentials,
         });
@@ -67,12 +70,15 @@ export class RegisterComponent {
       },
       error: (errorResponse: { status?: number; error?: { message?: string } }) => {
         this.loading = false;
+        this.error = '';
         if (errorResponse?.status === 0) {
-          this.error = 'No se pudo conectar al backend. Verifica que esté corriendo en http://localhost:3000.';
+          this.notify.toastError(
+            'No se pudo conectar al backend. Verifica que esté corriendo en http://localhost:3000.'
+          );
           return;
         }
 
-        this.error = errorResponse?.error?.message ?? 'Error al registrarse.';
+        this.notify.toastError(errorResponse?.error?.message ?? 'Error al registrarse.');
       },
     });
   }
