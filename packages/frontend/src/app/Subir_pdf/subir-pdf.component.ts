@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { environment } from '../../environments/environment';
 import { EventSocketService } from '../blockchain/event-socket.service';
@@ -85,8 +85,8 @@ export class SubirPdfComponent {
           this.feedback.set('Imagen publicada en mainnet correctamente.');
           this.notify.toastSuccess('Publicación en mainnet registrada.');
         },
-        error: (error: { error?: { message?: string } }) => {
-          const msg = error.error?.message ?? 'No se pudo publicar en mainnet.';
+        error: (error: HttpErrorResponse) => {
+          const msg = this.resolveUploadErrorMessage(error, 'No se pudo publicar en mainnet.');
           this.feedback.set(msg);
           this.notify.toastError(msg);
         }
@@ -111,12 +111,20 @@ export class SubirPdfComponent {
           this.feedback.set(`Imagen tokenizada: ${response.tokenId}`);
           this.notify.toastSuccess(`Token ID: ${response.tokenId}`);
         },
-        error: (error: { error?: { message?: string } }) => {
-          const msg = error.error?.message ?? 'No se pudo tokenizar la imagen.';
+        error: (error: HttpErrorResponse) => {
+          const msg = this.resolveUploadErrorMessage(error, 'No se pudo tokenizar el archivo.');
           this.feedback.set(msg);
           this.notify.toastError(msg);
         }
       });
+  }
+
+  private resolveUploadErrorMessage(error: HttpErrorResponse, fallback: string): string {
+    if (error.status === 413) {
+      return 'El archivo es demasiado grande para el servidor. Reduce el tamaño o comprime el PDF o la imagen.';
+    }
+    const body = error.error as { message?: string } | undefined;
+    return typeof body?.message === 'string' ? body.message : fallback;
   }
 
   private fileToBase64(file: File): Promise<string> {

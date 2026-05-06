@@ -16,6 +16,7 @@ const operationRequirements = {
  * Valida contrato funcional antes de ejecutar transacciones blockchain.
  *
  * @param {{contractName: string, operation: 'tokenize-image'|'publish-mainnet'|'money-transfer', payload: Record<string, unknown>}} input
+ * `payload.amountEth` debe ser cadena en unidades ETH (validada antes con `parseEther`).
  * @returns {{ok: boolean, reason?: string}}
  */
 export function validateContract(input) {

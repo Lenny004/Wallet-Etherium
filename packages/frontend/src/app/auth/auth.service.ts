@@ -1,8 +1,11 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, switchMap, tap } from 'rxjs';
 import { Router } from '@angular/router';
 import { environment } from '../../environments/environment';
+
+/** Cómo se autenticó el usuario; `siwe` implica uso de MetaMask en el dashboard. */
+export type AuthMethod = 'vault' | 'vc' | 'siwe';
 
 export interface User {
   id: number;
@@ -48,9 +51,30 @@ export class AuthService {
   private readonly router = inject(Router);
   /** Clave única usada para almacenar el JWT en localStorage. */
   private readonly tokenKey = 'auth_token';
+  private readonly authMethodKey = 'auth_method';
 
   /** Estado reactivo del usuario autenticado para toda la app. */
   readonly user$ = new BehaviorSubject<User | null>(null);
+
+  /** Método de login persistido (sincronizado con `localStorage`). */
+  readonly authMethod = signal<AuthMethod | null>(this.readStoredAuthMethod());
+
+  private readStoredAuthMethod(): AuthMethod | null {
+    const raw = localStorage.getItem(this.authMethodKey);
+    if (raw === 'vault' || raw === 'vc' || raw === 'siwe') {
+      return raw;
+    }
+    // Compatibilidad: tokens guardados antes de `auth_method` se tratan como cofre (sin SIWE).
+    if (localStorage.getItem(this.tokenKey)) {
+      return 'vault';
+    }
+    return null;
+  }
+
+  /** Sesión iniciada con SIWE / MetaMask (única ruta que conecta la extensión en el panel). */
+  isWalletSiweSession(): boolean {
+    return this.authMethod() === 'siwe';
+  }
 
   /**
    * Obtiene el token JWT almacenado en localStorage.
@@ -80,7 +104,7 @@ export class AuthService {
   login(walletAddress: string, seedPhrase: string): Observable<LoginResponse> {
     return this.http
       .post<LoginResponse>(`${environment.apiUrl}/auth/login`, { walletAddress, seedPhrase })
-      .pipe(tap((response) => this.setSession(response.token, response.user)));
+      .pipe(tap((response) => this.setSession(response.token, response.user, 'vault')));
   }
 
   /**
@@ -95,7 +119,7 @@ export class AuthService {
     const vcPayload = typeof vc === 'string' ? vc : JSON.stringify(vc);
     return this.http
       .post<LoginResponse>(`${environment.apiUrl}/auth/login-vc`, { did, vc: vcPayload })
-      .pipe(tap((response) => this.setSession(response.token, response.user)));
+      .pipe(tap((response) => this.setSession(response.token, response.user, 'vc')));
   }
 
   /**
@@ -154,7 +178,7 @@ export class AuthService {
             )
           );
       }),
-      tap((response) => this.setSession(response.token, response.user))
+      tap((response) => this.setSession(response.token, response.user, 'siwe'))
     );
   }
 
@@ -200,6 +224,8 @@ export class AuthService {
    */
   logout(redirect = true): void {
     localStorage.removeItem(this.tokenKey);
+    localStorage.removeItem(this.authMethodKey);
+    this.authMethod.set(null);
     this.user$.next(null);
     if (redirect) {
       void this.router.navigateByUrl('/login');
@@ -212,8 +238,10 @@ export class AuthService {
     * @param token JWT emitido por el backend.
     * @param user Perfil público del usuario autenticado.
    */
-  private setSession(token: string, user: User): void {
+  private setSession(token: string, user: User, method: AuthMethod): void {
     localStorage.setItem(this.tokenKey, token);
+    localStorage.setItem(this.authMethodKey, method);
+    this.authMethod.set(method);
     this.user$.next(user);
   }
 }

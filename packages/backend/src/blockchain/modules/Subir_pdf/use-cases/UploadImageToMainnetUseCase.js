@@ -6,6 +6,7 @@ export class UploadImageToMainnetUseCase {
   /**
    * @param {{imageRepository: any, eventBus: any}} deps
    */
+  
   constructor({ imageRepository, eventBus }) {
     this.imageRepository = imageRepository;
     this.eventBus = eventBus;

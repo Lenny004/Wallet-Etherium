@@ -1,7 +1,7 @@
 <header class="content-header">
   <div>
     <h1>Subir PDF</h1>
-    <p>Tokeniza imágenes en base de datos temporal y promuévelas a mainnet bajo demanda (EDA + validación de contrato).</p>
+    <p>Tokeniza archivos (imagen o PDF) en almacenamiento temporal y promuévelos a mainnet bajo demanda (arquitectura orientada a eventos + validación de contrato).</p>
   </div>
 </header>
 
@@ -22,8 +22,8 @@
 </section>
 
 <section class="panel">
-  <h2>Carga de imagen</h2>
-  <p>Arrastra una imagen aquí o selecciónala manualmente.</p>
+  <h2>Carga de archivo</h2>
+  <p>Arrastra una imagen o un PDF aquí, o selecciónalo manualmente.</p>
   <div
     class="drop-zone"
     [class.drop-zone--active]="isDragging()"
@@ -32,7 +32,7 @@
     (drop)="onDrop($event)"
   >
     <p>Suelta el archivo o usa el selector.</p>
-    <input type="file" accept="image/*" (change)="onFileSelected($event)" />
+    <input type="file" accept="image/*,.pdf,application/pdf" (change)="onFileSelected($event)" />
   </div>
 </section>
 

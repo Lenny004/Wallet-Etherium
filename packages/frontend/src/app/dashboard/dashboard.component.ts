@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../auth/auth.service';
 import { NotificationService } from '../notifications/notification.service';
+import { EthereumWalletService } from '../wallet/ethereum-wallet.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -10,11 +11,37 @@ import { NotificationService } from '../notifications/notification.service';
   styleUrl: './dashboard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class DashboardComponent {
-  private readonly authService = inject(AuthService);
+export class DashboardComponent implements OnInit {
+  protected readonly auth = inject(AuthService);
   private readonly notify = inject(NotificationService);
+  protected readonly wallet = inject(EthereumWalletService);
 
   protected readonly linkActive = { exact: true };
+
+  ngOnInit(): void {
+    if (this.auth.isWalletSiweSession()) {
+      this.wallet.beginListening();
+    }
+  }
+
+  protected async onWalletBarClick(): Promise<void> {
+    if (this.wallet.shortAddress()) {
+      try {
+        await this.wallet.refreshChainAndBalance();
+        this.notify.toastInfo('Saldo y red actualizados.');
+      } catch {
+        this.notify.toastError('No se pudo actualizar el estado de la wallet.');
+      }
+      return;
+    }
+    try {
+      await this.wallet.connectMetaMask();
+      this.notify.toastSuccess('MetaMask conectada en Sepolia.');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'No se pudo conectar la wallet.';
+      this.notify.toastError(msg);
+    }
+  }
 
   protected async logout(): Promise<void> {
     const confirmed = await this.notify.confirm({
@@ -28,6 +55,7 @@ export class DashboardComponent {
       return;
     }
     this.notify.toastInfo('Sesión cerrada');
-    this.authService.logout();
+    this.wallet.reset();
+    this.auth.logout();
   }
 }

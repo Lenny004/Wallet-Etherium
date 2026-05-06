@@ -4,12 +4,12 @@
     <p>Gestiona tus activos y transferencias de Ethereum.</p>
   </div>
 
-  <div class="network-chip">
+  <div class="network-chip" [class.network-chip--ok]="networkChipTone() === 'ok'" [class.network-chip--warn]="networkChipTone() === 'warn'" [class.network-chip--muted]="networkChipTone() === 'muted'">
     <span class="pulse-wrap">
       <span class="pulse-dot pulse-dot--ping"></span>
       <span class="pulse-dot"></span>
     </span>
-    <span>Ethereum Mainnet Conectada</span>
+    <span>{{ networkChipLabel() }}</span>
   </div>
 </header>
 
@@ -17,12 +17,30 @@
   <article class="balance-card">
     <div class="balance-head">
       <div>
-        <small>Liquidez Disponible</small>
+        <small>
+          @if (auth.isWalletSiweSession()) {
+            Liquidez disponible (Sepolia · MetaMask)
+          } @else {
+            Red de pruebas Sepolia (sin MetaMask en esta sesión)
+          }
+        </small>
         <div class="balance-value">
-          <strong>{{ balanceEth() | number: '1.2-2' }}</strong>
+          @if (displayEth() !== null) {
+            <strong>{{ displayEth()! | number: '1.4-6' }}</strong>
+          } @else {
+            <strong>—</strong>
+          }
           <span>ETH</span>
         </div>
-        <p>≈ ${{ balanceUsd() | number: '1.2-2' }} USD</p>
+        <p class="balance-sub">
+          @if (displayEth() !== null) {
+            Saldo on-chain en Sepolia vía MetaMask
+          } @else if (auth.isWalletSiweSession()) {
+            Conecta MetaMask desde el panel lateral para ver tu saldo real
+          } @else {
+            Inicia sesión con MetaMask (SIWE) para ver saldo on-chain en Sepolia
+          }
+        </p>
       </div>
 
       <div class="wallet-icon">
@@ -31,10 +49,12 @@
     </div>
 
     <div class="balance-actions">
-      <button type="button" class="btn btn-primary" (click)="onFaucetClick()">
-        <span class="material-symbols-outlined">add_circle</span>
-        Solicitar Faucet
-      </button>
+      @if (auth.isWalletSiweSession()) {
+        <button type="button" class="btn btn-primary" (click)="onFaucetClick()">
+          <span class="material-symbols-outlined">add_circle</span>
+          Solicitar Faucet
+        </button>
+      }
       <button type="button" class="btn btn-surface" (click)="onSwapClick()">
         <span class="material-symbols-outlined">swap_horiz</span>
         Intercambiar
@@ -67,39 +87,72 @@
   <article class="transactions-card">
     <div class="transactions-header">
       <h3>Transacciones recientes</h3>
-      <button type="button">Ver todo en el explorador</button>
+      <button
+        type="button"
+        [disabled]="!wallet.connectedAddress() || !wallet.isTargetChain()"
+        (click)="openAddressOnExplorer()"
+      >
+        Ver todo en el explorador
+      </button>
     </div>
 
     <div class="transactions-list">
-      @for (transaction of transactions(); track transaction.title + transaction.subtitle) {
-        <div class="transaction-item">
-          <div class="tx-left">
-            <div class="tx-icon" [class.tx-icon--in]="transaction.type === 'faucet'" [class.tx-icon--pending]="transaction.type === 'swap'">
-              <span class="material-symbols-outlined">
-                @if (transaction.type === 'sent') { call_made }
-                @if (transaction.type === 'faucet') { call_received }
-                @if (transaction.type === 'swap') { history }
-              </span>
+      @if (transactionsLoading()) {
+        <p class="transactions-hint">Cargando transacciones desde Sepolia…</p>
+      } @else if (transactionsError()) {
+        <p class="transactions-error">{{ transactionsError() }}</p>
+      } @else if (transactions().length === 0) {
+        <p class="transactions-hint">
+          @if (wallet.connectedAddress() && wallet.isTargetChain()) {
+            No hay transacciones en Sepolia para esta cuenta todavía.
+          } @else {
+            Conecta MetaMask en Sepolia para ver tu historial on-chain.
+          }
+        </p>
+      } @else {
+        @for (transaction of transactions(); track transaction.hash) {
+          <div class="transaction-item">
+            <div class="tx-left">
+              <div
+                class="tx-icon"
+                [class.tx-icon--in]="transaction.type === 'received'"
+                [class.tx-icon--pending]="transaction.type === 'contract'"
+              >
+                <span class="material-symbols-outlined">
+                  @if (transaction.type === 'sent') {
+                    call_made
+                  }
+                  @if (transaction.type === 'received') {
+                    call_received
+                  }
+                  @if (transaction.type === 'contract') {
+                    history
+                  }
+                </span>
+              </div>
+              <div>
+                <p class="tx-title">{{ transaction.title }}</p>
+                <p class="tx-subtitle">{{ transaction.subtitle }}</p>
+              </div>
             </div>
-            <div>
-              <p class="tx-title">{{ transaction.title }}</p>
-              <p class="tx-subtitle">{{ transaction.subtitle }}</p>
-            </div>
-          </div>
 
-          <div class="tx-right">
-            <p class="tx-amount" [class.tx-amount--in]="transaction.type === 'faucet'">{{ transaction.amount }}</p>
-            @if (transaction.status === 'confirmed') {
-              <span class="tx-status tx-status--confirmed">Confirmada</span>
-            }
-            @if (transaction.status === 'pending') {
-              <span class="tx-status tx-status--pending">
-                <span class="pending-dot"></span>
-                Pendiente
-              </span>
-            }
+            <div class="tx-right">
+              <p class="tx-amount" [class.tx-amount--in]="transaction.type === 'received'">{{ transaction.amount }}</p>
+              @if (transaction.status === 'confirmed') {
+                <span class="tx-status tx-status--confirmed">Confirmada</span>
+              }
+              @if (transaction.status === 'pending') {
+                <span class="tx-status tx-status--pending">
+                  <span class="pending-dot"></span>
+                  Pendiente
+                </span>
+              }
+              @if (transaction.status === 'failed') {
+                <span class="tx-status tx-status--failed">Fallida</span>
+              }
+            </div>
           </div>
-        </div>
+        }
       }
     </div>
   </article>

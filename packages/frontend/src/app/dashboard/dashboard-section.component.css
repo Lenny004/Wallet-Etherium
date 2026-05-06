@@ -202,6 +202,11 @@ code {
     background: transparent
 }
 
+.tx-status--failed {
+    color: color-mix(in srgb, #e57373 90%, var(--color-on-surface));
+    background: color-mix(in srgb, #e57373 14%, transparent)
+}
+
 .pending-dot {
     width: .6rem;
     height: .6rem;

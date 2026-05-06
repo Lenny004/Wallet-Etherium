@@ -1,29 +1,36 @@
 <header class="content-header">
   <div>
     <h1>Enviar_dinero</h1>
-    <p>Flujo con EDA, Clean Architecture y validación contractual previa a la operación.</p>
+    <p>
+      Flujo con EDA y Clean Architecture. El origen es siempre la wallet de tu sesión; el servidor exige JWT y rechaza enviar a la misma dirección.
+    </p>
   </div>
 </header>
 
 <section class="panel">
   <h2>Datos de la transferencia</h2>
-  <p>Completa origen, destino y monto. El servidor valida el contrato antes de continuar.</p>
+  <p>
+    Indica solo destino y monto. La “validación contractual” del demo comprueba un nombre de contrato interno y campos mínimos antes de simular la transacción (no es un contrato desplegado en cadena).
+  </p>
   <div class="verify-form">
     <label>
-      <span>Wallet origen</span>
-      <input type="text" [ngModel]="fromAddress()" (ngModelChange)="fromAddress.set($event)" />
+      <span>Tu wallet (sesión)</span>
+      <input type="text" [value]="fromWalletDisplay()" readonly />
     </label>
     <label>
       <span>Wallet destino</span>
-      <input type="text" [ngModel]="toAddress()" (ngModelChange)="toAddress.set($event)" />
+      <input type="text" [ngModel]="toAddress()" (ngModelChange)="toAddress.set($event)" placeholder="0x…" />
     </label>
     <label>
       <span>Monto (ETH)</span>
-      <input type="number" [ngModel]="amountEth()" (ngModelChange)="amountEth.set($event)" />
-    </label>
-    <label>
-      <span>Contrato para validación</span>
-      <input type="text" [ngModel]="contractName()" (ngModelChange)="contractName.set($event)" />
+      <input
+        type="text"
+        inputmode="decimal"
+        [ngModel]="amountEth()"
+        (ngModelChange)="amountEth.set($event)"
+        placeholder="Ej. 0.000000000000000001"
+        autocomplete="off"
+      />
     </label>
     <div class="verify-actions">
       <button type="button" class="btn btn-primary" (click)="requestTransfer()">Solicitar transferencia</button>

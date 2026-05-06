@@ -40,6 +40,29 @@ if (!jwtSecret || jwtSecret.length < 16) {
   throw new Error('JWT_SECRET must be defined and at least 16 characters long.');
 }
 
+/**
+ * Valida token Bearer y adjunta los claims JWT en `req.user`.
+ *
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ */
+function authMiddleware(req, res, next) {
+  const header = req.headers.authorization;
+  if (!header || !header.startsWith('Bearer ')) {
+    return res.status(401).json({ message: 'No autorizado.' });
+  }
+  const token = header.slice(7);
+
+  try {
+    const decoded = jwt.verify(token, jwtSecret);
+    req.user = decoded;
+    return next();
+  } catch {
+    return res.status(401).json({ message: 'Token inválido o expirado.' });
+  }
+}
+
 const userSchema = z.object({
   id: z.string(),
   nombre: z.string(),
@@ -242,7 +265,13 @@ app.use(
     allowedHeaders: ['Content-Type', 'Authorization']
   })
 );
+
+const { subirPdfRouter, enviarDineroRouter } = createBlockchainModule({ server });
+
+// JSON con límite alto solo bajo /api/subir-pdf (cuerpos Base64 de imagen o PDF). El resto del API usa límite pequeño.
+app.use('/api/subir-pdf', express.json({ limit: '25mb' }), subirPdfRouter);
 app.use(express.json({ limit: '10kb' }));
+app.use('/api/enviar-dinero', authMiddleware, enviarDineroRouter);
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -259,10 +288,6 @@ app.get('/health', (_req, res) => {
 });
 
 app.use('/api/auth', authLimiter);
-
-const { subirPdfRouter, enviarDineroRouter } = createBlockchainModule({ server });
-app.use('/api/subir-pdf', subirPdfRouter);
-app.use('/api/enviar-dinero', enviarDineroRouter);
 
 app.post('/api/auth/register', async (req, res, next) => {
   try {
@@ -463,30 +488,6 @@ app.post('/api/auth/login-siwe', async (req, res, next) => {
     return next(error);
   }
 });
-
-/**
- * Valida token Bearer y carga los claims decodificados en la request.
- *
- * @param {import('express').Request} req Solicitud HTTP entrante.
- * @param {import('express').Response} res Respuesta HTTP.
- * @param {import('express').NextFunction} next Continuación del pipeline.
- * @returns {void} Finaliza respuesta 401 o delega en `next()`.
- */
-function authMiddleware(req, res, next) {
-  const header = req.headers.authorization;
-  if (!header || !header.startsWith('Bearer ')) {
-    return res.status(401).json({ message: 'No autorizado.' });
-  }
-  const token = header.slice(7);
-
-  try {
-    const decoded = jwt.verify(token, jwtSecret);
-    req.user = decoded;
-    return next();
-  } catch {
-    return res.status(401).json({ message: 'Token inválido o expirado.' });
-  }
-}
 
 app.get('/api/me', authMiddleware, async (req, res, next) => {
   try {

@@ -23,7 +23,27 @@
         </div>
       </div>
 
-      <button type="button" class="wallet-btn">Conectar Wallet</button>
+      @if (auth.isWalletSiweSession()) {
+        <button
+          type="button"
+          class="wallet-btn"
+          [disabled]="!wallet.hasProvider() || wallet.connecting()"
+          (click)="onWalletBarClick()"
+        >
+          @if (wallet.connecting()) {
+            Conectando…
+          } @else if (wallet.shortAddress()) {
+            {{ wallet.shortAddress() }} · Sepolia
+          } @else {
+            Conectar MetaMask (Sepolia)
+          }
+        </button>
+        @if (!wallet.hasProvider()) {
+          <p class="wallet-hint">Instala MetaMask para usar Sepolia y el faucet.</p>
+        }
+      } @else {
+        <p class="wallet-hint">Red de pruebas Sepolia en la app. MetaMask solo si entras con SIWE.</p>
+      }
     </div>
 
     <div class="side-links">

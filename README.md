@@ -1,120 +1,127 @@
 # Wallet-Etherium
 
-Aplicación monorepo para autenticación Web3 con flujo completo de registro e inicio de sesión (Wallet + Seed, VC + DID y SIWE).
+Monorepo para autenticación Web3 con registro e inicio de sesión completos: **wallet + seed**, **VC + DID** y **SIWE** (Sign-In with Ethereum). Incluye un **dashboard** con secciones de pagos, historial, certificados, verificación, carga de archivos (tokenización) y envío de dinero, con **eventos en tiempo real** vía WebSocket.
 
 ## Inicio rápido
 
-1. Instalar dependencias del monorepo:
-	- `npm install`
-2. Configurar variables de entorno backend:
-	- Copiar `packages/backend/.env.example` a `packages/backend/.env`
-	- Definir `JWT_SECRET` fuerte y único (mínimo 16 caracteres)
-3. Iniciar backend:
-	- `npm run backend:dev`
-4. Iniciar frontend:
-	- `npm run frontend:start`
-5. Verificar servicios:
-	- Frontend: `http://localhost:4200`
-	- Backend health: `http://localhost:3000/health`
+1. Instalar dependencias en la raíz del monorepo:
+   - `npm install`
+2. Configurar el backend:
+   - Copiar `packages/backend/.env.example` a `packages/backend/.env`
+   - Definir `JWT_SECRET` fuerte y único (mínimo 16 caracteres)
+3. Arrancar el backend:
+   - `npm run backend:dev`
+4. Arrancar el frontend:
+   - `npm run frontend:start`
+5. Comprobar:
+   - Frontend: [http://localhost:4200](http://localhost:4200)
+   - Salud del API: [http://localhost:3000/health](http://localhost:3000/health)
 
-## Arquitectura
+## Arquitectura del monorepo
 
-- `packages/frontend` (Angular 21): UI de `login`, `register`, `wallet-credentials`, `dashboard`, guards e interceptor JWT.
-- `packages/backend` (Node.js + Express): API `/api/auth/*` y `/api/me` con validación de entrada, emisión JWT y protección básica anti abuso.
-- `packages/backend/src/blockchain`: solución blockchain modular con Clean Architecture + EDA + WebSocket.
-- `packages/frontend/src/app/Subir_pdf`: módulo de carga drag-and-drop y tokenización temporal de imágenes.
-- `packages/frontend/src/app/Enviar_dinero`: módulo independiente de transferencia de dinero con eventos en tiempo real.
-- `md/layer-*.mdc`: reglas MDC de seguridad, arquitectura y calidad aplicadas durante la migración.
+| Paquete | Rol |
+|--------|-----|
+| `packages/frontend` | **Angular 21** (~21.2): login, registro, credenciales, dashboard (rutas hijas), módulos Subir PDF y Enviar dinero, guardas de ruta, interceptor JWT, servicio WebSocket de eventos (`environment`: `apiUrl`, `wsUrl`, `chainId` Sepolia `11155111`). |
+| `packages/backend` | **Node.js 20+**, **Express 5**, API REST bajo `/api`, validación con **Zod**, JWT, **helmet**, CORS por origen, rate limiting en auth, **WebSocket** en `/ws/events`. Persistencia de desarrollo: `packages/backend/data/users.json` (usuarios y nonces SIWE). |
+| `packages/backend/src/blockchain` | Capa blockchain modular: **Clean Architecture**, **EDA** (bus en memoria), casos de uso y controladores por módulo. |
+| `packages/backend/src/contracts` | Validación previa de operaciones (`validate-contract.js`) antes de tokenizar, publicar a “mainnet” (simulado) o transferir. |
+| `packages/contracts`, `packages/shared` | Carpetas con documentación puntual; no son workspaces npm activos en el `package.json` raíz. |
 
-### Clean Architecture + EDA (Blockchain)
+### Módulos de producto (frontend)
 
-La implementación blockchain se organiza por capas y módulos:
+- **`Subir_pdf`**: carga (drag-and-drop) con tokenización temporal y promoción a mainnet (flujo simulado con `txHash` generado tras validación de contrato).
+- **`Enviar_dinero`**: solicitud de transferencias con validación contractual y eventos EDA.
+- **Dashboard**: shell con navegación lateral y vistas **Pagos**, **Historial**, **Certificados**, **Verificar**, **Subir PDF** y **Enviar dinero**.
 
-- **Entities**: `ImageToken`, `MoneyTransfer`, y eventos de dominio (`domain-events.js`).
-- **Use Cases**: tokenización/subida mainnet en `Subir_pdf`; solicitud/validación/ejecución en `Enviar_dinero`.
-- **Interface Adapters**: controladores HTTP desacoplados por módulo.
-- **Frameworks**: rutas Express, repositorios in-memory, gateway WebSocket y bus de eventos.
+### Clean Architecture + EDA (blockchain)
 
-Reglas aplicadas:
+- **Entidades**: p. ej. `ImageToken`, `MoneyTransfer`; eventos en `domain-events.js`.
+- **Casos de uso**: tokenización y subida mainnet en `Subir_pdf`; solicitud y validación/ejecución en `Enviar_dinero`.
+- **Adaptadores**: controladores HTTP por módulo.
+- **Infraestructura**: rutas Express, repositorios en memoria, `InMemoryEventBus`, `BlockchainWebSocketGateway` en `ws://localhost:3000/ws/events`.
 
-- Dependencias hacia el centro (Use Cases y Entities no dependen de Express).
-- Comunicación entre módulos exclusivamente por eventos de dominio.
-- Productores/consumidores desacoplados usando `InMemoryEventBus`.
-- Propagación de eventos en tiempo real por `ws://localhost:3000/ws/events`.
+Reglas: dependencias hacia el centro; comunicación entre módulos vía eventos; propagación en tiempo real al cliente por WebSocket.
 
-### Validación de contrato obligatoria
+### Validación de contrato
 
-Antes de ejecutar operaciones blockchain se valida el contrato en:
+Antes de ejecutar operaciones blockchain se llama a `packages/backend/src/contracts/validate-contract.js` para las operaciones `tokenize-image`, `publish-mainnet` y `money-transfer`. Si falla, se emite `shared.contract_validation_failed` y la operación no continúa.
 
-- `packages/backend/src/contracts/validate-contract.js`
+## Rutas de la aplicación (Angular)
 
-Flujos protegidos:
+- `/login`, `/register` (con `loginGuard` si ya hay sesión).
+- `/wallet-credentials` (muestra credenciales tras el registro).
+- `/dashboard` (protegido con `authGuard`):
+  - `/dashboard` → redirige a `/dashboard/pagos`
+  - `/dashboard/pagos`, `/dashboard/historial`, `/dashboard/certificados`, `/dashboard/verificar`
+  - `/dashboard/subir-pdf`, `/dashboard/enviar-dinero`
+- `/subir-pdf` y `/enviar-dinero` en la raíz **redirigen** a `/dashboard/subir-pdf` y `/dashboard/enviar-dinero`.
+- `/` → `/login`; rutas desconocidas → `/login`.
 
-- Tokenización de imagen (`tokenize-image`)
-- Publicación a mainnet (`publish-mainnet`)
-- Transferencia de dinero (`money-transfer`)
+## Endpoints principales (HTTP)
 
-Si falla la validación, se emite `shared.contract_validation_failed` y se bloquea la operación.
+**Autenticación y perfil**
 
-## Endpoints principales
+- `POST /api/auth/register` — cuerpo: `nombre`, `apellido`, `rol`, `compania` (genera wallet, DID, VC y hash de seed).
+- `POST /api/auth/login` — wallet + seed phrase.
+- `POST /api/auth/login-vc` — DID + VC.
+- `GET /api/auth/siwe-message?address=0x...` — mensaje + nonce para SIWE.
+- `POST /api/auth/login-siwe` — `message` + `signature`.
+- `GET /api/me` — perfil (header `Authorization: Bearer <jwt>`).
 
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `POST /api/auth/login-vc`
-- `GET /api/auth/siwe-message`
-- `POST /api/auth/login-siwe`
-- `GET /api/me`
-- `POST /api/subir-pdf/tokenize-image`
-- `POST /api/subir-pdf/upload-mainnet`
-- `POST /api/enviar-dinero/request`
-- `GET /ws/events` (WebSocket stream de eventos EDA)
+**Blockchain (JSON)**
+
+- `POST /api/subir-pdf/tokenize-image` — `fileName`, `mimeType`, `contentBase64`, `contractName`.
+- `POST /api/subir-pdf/upload-mainnet` — `tokenId`, `contractName`.
+- `POST /api/enviar-dinero/request` — cuerpo: `fromAddress`, `toAddress`, `amountEth`, `contractName`; respuesta típica `202` con `transferId` y `status`.
+
+**Tiempo real**
+
+- `GET /ws/events` — WebSocket (mismo host/puerto que el API).
+
+**Utilidad**
+
+- `GET /health` — `{ "ok": true }`.
+
+### Detalles del servidor
+
+- Cuerpo JSON hasta **25 MB** solo bajo `/api/subir-pdf` (Base64 de archivos); el resto del API usa límite pequeño (**10 KB**).
+- Rate limiting en `/api/auth/*`: **80** solicitudes por ventana de **15 minutos**.
 
 ## Requisitos
 
-- Node.js 20+
-- npm 10+
+- **Node.js** 20 o superior
+- **npm** 10+ (el frontend declara `packageManager` npm 11.x)
 
 ## Variables de entorno (backend)
 
-Copiar `packages/backend/.env.example` a `packages/backend/.env` y ajustar:
+Copiar `packages/backend/.env.example` a `packages/backend/.env`:
 
-- `PORT` (default: `3000`)
-- `JWT_SECRET` (obligatoria, mínimo `16` caracteres)
-- `JWT_EXPIRES_IN` (default: `1h`)
-- `FRONTEND_ORIGIN` (default: `http://localhost:4200`)
-- `SIWE_DOMAIN` (default: `localhost:4200`)
-- `SIWE_URI` (default: `http://localhost:4200`)
-- `SIWE_CHAIN_ID` (default: `11155111`)
+- `PORT` (por defecto `3000`)
+- `JWT_SECRET` (obligatoria, mínimo 16 caracteres)
+- `JWT_EXPIRES_IN` (por defecto `1h`)
+- `FRONTEND_ORIGIN` (por defecto `http://localhost:4200`)
+- `SIWE_DOMAIN`, `SIWE_URI`, `SIWE_CHAIN_ID` (por defecto cadena Sepolia `11155111`)
 
-## Scripts útiles
+## Scripts útiles (raíz)
 
-- `npm run backend:dev`
-- `npm run backend:start`
-- `npm run frontend:start`
-- `npm run frontend:build`
+- `npm run backend:dev` — servidor con `node --watch`
+- `npm run backend:start` — servidor en producción local
+- `npm run frontend:start` — `ng serve`
+- `npm run frontend:build` — build de producción del frontend
 
-## Nuevos flujos UI
+## Flujo funcional resumido
 
-- Ruta `/subir-pdf`: drag-and-drop de imágenes, tokenización temporal y promoción a mainnet.
-- Ruta `/enviar-dinero`: solicitud de transferencias con validación contractual previa.
-- Ambas vistas consumen el stream de eventos WebSocket para feedback operativo en tiempo real.
+1. **Registro**: crea usuario con wallet Ethereum, DID (`did:ethr:<address>`), VC (incluye nombre, apellido, rol, compañía en `credentialSubject`) y devuelve la **seed phrase una sola vez**.
+2. El usuario guarda o copia credenciales en **wallet-credentials**.
+3. **Login**: wallet + seed, o VC + DID, o SIWE con wallet inyectada (MetaMask u otra).
+4. El **JWT** incluye claims de sesión (`sub`, `walletAddress`, `did`, `rol`, `compania`); el frontend lo envía en `Authorization: Bearer`.
+5. Desde el **dashboard** se accede a tokenización/subida simulada y a envío de dinero, escuchando eventos por WebSocket cuando aplica.
 
-## Seguridad aplicada (MDC)
+## Seguridad (resumen)
 
-- Validación runtime de `body/query` con `zod` en todos los endpoints auth.
-- Rate limiting en `/api/auth/*` para mitigar abuso de intentos.
-- Uso de `helmet` y `cors` restringido por `FRONTEND_ORIGIN`.
-- Seed phrase nunca se persiste en claro: solo hash (`bcrypt`) para verificación.
-- Respuestas de error sin stack traces ni detalles internos.
-- Sin secretos hardcodeados; configuración sensible solo por `.env`.
-- Frontend sin logs de datos sensibles de autenticación.
-
-## Flujo funcional
-
-1. Registro crea wallet, DID y VC; devuelve seed phrase una sola vez.
-2. Usuario guarda credenciales en la pantalla `wallet-credentials`.
-3. Login permite:
-	- Wallet + Seed
-	- VC + DID
-	- SIWE con wallet inyectada
-4. JWT se almacena en frontend y se envía por interceptor en `Authorization: Bearer`.
+- Validación runtime con **Zod** en auth y en controladores blockchain.
+- **Rate limit** en rutas de autenticación.
+- **helmet** y **CORS** acotado a `FRONTEND_ORIGIN`.
+- La seed **no** se guarda en claro: solo hash (**bcrypt**).
+- Respuestas de error sin stack ni detalles internos.
+- Secretos solo por `.env`; sin valores sensibles fijos en código.

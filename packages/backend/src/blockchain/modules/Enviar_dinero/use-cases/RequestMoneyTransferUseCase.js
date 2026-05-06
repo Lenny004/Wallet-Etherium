@@ -9,7 +9,7 @@ export class RequestMoneyTransferUseCase {
   }
 
   /**
-   * @param {{fromAddress: string, toAddress: string, amountEth: number}} command
+   * @param {{fromAddress: string, toAddress: string, amountEth: string}} command
    */
   async execute(command) {
     const transfer = createMoneyTransfer(command);

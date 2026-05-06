@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 
 /**
- * @param {{fromAddress: string, toAddress: string, amountEth: number}} input
+ * @param {{fromAddress: string, toAddress: string, amountEth: string}} input
  */
 export function createMoneyTransfer(input) {
   return {

@@ -1,8 +1,10 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { environment } from '../../environments/environment';
 import { AuthService } from '../auth/auth.service';
 import { NotificationService } from '../notifications/notification.service';
+import { EthereumWalletService } from '../wallet/ethereum-wallet.service';
 
 type LoginTab = 'vault' | 'identity' | 'siwe';
 
@@ -14,10 +16,13 @@ type LoginTab = 'vault' | 'identity' | 'siwe';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LoginComponent {
+  /** chainId de la testnet configurada (p. ej. Sepolia). */
+  protected readonly chainId = environment.chainId;
   private readonly formBuilder = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly notify = inject(NotificationService);
+  private readonly wallet = inject(EthereumWalletService);
 
   readonly activeTab = signal<LoginTab>('vault');
   error = '';
@@ -108,8 +113,19 @@ export class LoginComponent {
 
     this.auth.loginWithSiwe().subscribe({
       next: () => {
-        this.notify.toastSuccess('Conectado con tu wallet.');
-        void this.router.navigateByUrl('/dashboard');
+        this.wallet.beginListening();
+        void (async () => {
+          try {
+            await this.wallet.ensureTargetChain();
+            await this.wallet.refreshChainAndBalance();
+          } catch {
+            this.notify.toastInfo('Acepta el cambio a Sepolia en MetaMask para operar en la testnet.');
+          } finally {
+            this.siweLoading = false;
+          }
+          this.notify.toastSuccess('Conectado con tu wallet.');
+          void this.router.navigateByUrl('/dashboard');
+        })();
       },
       error: (errorResponse: { error?: { message?: string }; message?: string; status?: number }) => {
         this.error = '';
@@ -122,9 +138,6 @@ export class LoginComponent {
           message = 'No se pudo conectar con el backend.';
         }
         this.notify.toastError(message);
-        this.siweLoading = false;
-      },
-      complete: () => {
         this.siweLoading = false;
       },
     });

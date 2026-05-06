@@ -35,6 +35,18 @@
       "vc": "{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],\"type\":[\"VerifiableCredential\",\"WalletCredential\"],\"issuer\":\"did:ethr:0x431658B80877E9Cff1cC541B5f997317d2Aa604B\",\"credentialSubject\":{\"id\":\"did:ethr:0x431658B80877E9Cff1cC541B5f997317d2Aa604B\",\"walletAddress\":\"0x431658B80877E9Cff1cC541B5f997317d2Aa604B\",\"nombre\":\"Mario\",\"apellido\":\"Aldana\",\"rol\":\"Jefe de programación\",\"compania\":\"UFG\"}}",
       "seedHash": "$2a$12$lZp2Ae0thQKpviHUD2CCLeqzZM8vqbUh22BEyyt3RM0dPamhRzeIK",
       "createdAt": "2026-04-16T01:41:28.816Z"
+    },
+    {
+      "id": "1777235439921",
+      "nombre": "Marcos",
+      "apellido": "Antonio",
+      "rol": "PROGRAMADOR",
+      "compania": "UFG",
+      "walletAddress": "0xcB66dD0179f0Ecd0c7f3060386324A4Fe08c13Bc",
+      "did": "did:ethr:0xcB66dD0179f0Ecd0c7f3060386324A4Fe08c13Bc",
+      "vc": "{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],\"type\":[\"VerifiableCredential\",\"WalletCredential\"],\"issuer\":\"did:ethr:0xcB66dD0179f0Ecd0c7f3060386324A4Fe08c13Bc\",\"credentialSubject\":{\"id\":\"did:ethr:0xcB66dD0179f0Ecd0c7f3060386324A4Fe08c13Bc\",\"walletAddress\":\"0xcB66dD0179f0Ecd0c7f3060386324A4Fe08c13Bc\",\"nombre\":\"Marcos\",\"apellido\":\"Antonio\",\"rol\":\"PROGRAMADOR\",\"compania\":\"UFG\"}}",
+      "seedHash": "$2a$12$zT9NjXHFebCBKJ1ZkWp0DOzBOpcJ.tX6.RIoFg03O2soOS639jAw6",
+      "createdAt": "2026-04-26T20:30:39.921Z"
     }
   ],
   "siweNonces": []

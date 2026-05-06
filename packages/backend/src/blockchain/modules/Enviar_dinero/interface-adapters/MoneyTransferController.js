@@ -1,11 +1,26 @@
 import { z } from 'zod';
+import { getAddress, parseEther } from 'ethers';
 import { BlockchainEvents, createDomainEvent } from '../../../events/domain-events.js';
 
+/** Identificador fijo del “contrato” en el demo EDA (`validate-contract.js` exige nombre con `wallet`). */
+const WALLET_TRANSFER_CONTRACT_NAME = 'WalletTransferContractV1';
+
 const moneyTransferSchema = z.object({
-  fromAddress: z.string().trim().regex(/^0x[a-fA-F0-9]{40}$/),
   toAddress: z.string().trim().regex(/^0x[a-fA-F0-9]{40}$/),
-  amountEth: z.coerce.number().positive(),
-  contractName: z.string().trim().min(3)
+  amountEth: z
+    .string()
+    .trim()
+    .min(1)
+    .refine(
+      (s) => {
+        try {
+          return parseEther(s) > 0n;
+        } catch {
+          return false;
+        }
+      },
+      { message: 'Monto ETH inválido.' }
+    )
 });
 
 export class MoneyTransferController {
@@ -24,7 +39,26 @@ export class MoneyTransferController {
         return res.status(422).json({ message: 'Solicitud de transferencia inválida.' });
       }
 
-      const { fromAddress, toAddress, amountEth, contractName } = parsed.data;
+      let fromAddress;
+      try {
+        const wallet = typeof req.user?.walletAddress === 'string' ? req.user.walletAddress : '';
+        fromAddress = getAddress(wallet);
+      } catch {
+        return res.status(401).json({ message: 'Sesión sin dirección de wallet válida.' });
+      }
+
+      let toAddress;
+      try {
+        toAddress = getAddress(parsed.data.toAddress);
+      } catch {
+        return res.status(422).json({ message: 'Dirección de destino inválida.' });
+      }
+
+      if (toAddress.toLowerCase() === fromAddress.toLowerCase()) {
+        return res.status(422).json({ message: 'El destino no puede ser la misma wallet de la sesión.' });
+      }
+
+      const { amountEth } = parsed.data;
       const transfer = await this.requestMoneyTransferUseCase.execute({
         fromAddress,
         toAddress,
@@ -34,7 +68,7 @@ export class MoneyTransferController {
       await this.eventBus.publish(
         createDomainEvent(BlockchainEvents.MONEY_TRANSFER_REQUESTED, {
           transferId: transfer.transferId,
-          contractName
+          contractName: WALLET_TRANSFER_CONTRACT_NAME
         })
       );
 
