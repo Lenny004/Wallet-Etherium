@@ -33,16 +33,16 @@
           @if (wallet.connecting()) {
             Conectando…
           } @else if (wallet.shortAddress()) {
-            {{ wallet.shortAddress() }} · Sepolia
+            {{ wallet.shortAddress() }} · {{ networkName }}
           } @else {
-            Conectar MetaMask (Sepolia)
+            Conectar MetaMask ({{ networkName }})
           }
         </button>
         @if (!wallet.hasProvider()) {
-          <p class="wallet-hint">Instala MetaMask para usar Sepolia y el faucet.</p>
+          <p class="wallet-hint">Instala MetaMask para usar {{ networkName }}.</p>
         }
       } @else {
-        <p class="wallet-hint">Red de pruebas Sepolia en la app. MetaMask solo si entras con SIWE.</p>
+        <p class="wallet-hint">Red {{ networkName }} en la app. MetaMask solo si entras con SIWE.</p>
       }
     </div>
 

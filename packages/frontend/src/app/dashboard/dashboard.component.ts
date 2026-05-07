@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { environment } from '../../environments/environment';
 import { AuthService } from '../auth/auth.service';
 import { NotificationService } from '../notifications/notification.service';
 import { EthereumWalletService } from '../wallet/ethereum-wallet.service';
@@ -15,6 +16,8 @@ export class DashboardComponent implements OnInit {
   protected readonly auth = inject(AuthService);
   private readonly notify = inject(NotificationService);
   protected readonly wallet = inject(EthereumWalletService);
+
+  protected readonly networkName = environment.networkDisplayName;
 
   protected readonly linkActive = { exact: true };
 
@@ -36,7 +39,7 @@ export class DashboardComponent implements OnInit {
     }
     try {
       await this.wallet.connectMetaMask();
-      this.notify.toastSuccess('MetaMask conectada en Sepolia.');
+      this.notify.toastSuccess(`MetaMask conectada en ${this.networkName}.`);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'No se pudo conectar la wallet.';
       this.notify.toastError(msg);

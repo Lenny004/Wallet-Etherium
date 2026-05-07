@@ -2,11 +2,8 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { AuthService } from '../auth/auth.service';
 
-/** chainId de `environment` en hex (p. ej. Sepolia 11155111 → 0xaa36a7). */
+/** chainId de `environment` en hex (p. ej. Ganache 1337 → 0x539). */
 export const TARGET_CHAIN_ID_HEX = `0x${environment.chainId.toString(16)}` as const;
-
-/** Faucet público para solicitar ETH de prueba en Sepolia (el usuario pega su dirección en la web). */
-export const SEPOLIA_FAUCET_URL = 'https://www.alchemy.com/faucets/ethereum-sepolia-faucet';
 
 type Eip1193Request = { method: string; params?: unknown[] };
 
@@ -167,7 +164,7 @@ export class EthereumWalletService {
   }
 
   /**
-   * Cambia a la red configurada en `environment.chainId` (Sepolia por defecto)
+   * Cambia a la red configurada en `environment.chainId`
    * o la registra en MetaMask si no existe.
    */
   async ensureTargetChain(): Promise<void> {
@@ -175,6 +172,8 @@ export class EthereumWalletService {
     if (!eth) {
       throw new Error('No se detectó MetaMask u otra wallet compatible.');
     }
+    const chainName = environment.networkDisplayName;
+    const rpcUrl = environment.chainRpcUrl;
     try {
       await eth.request({
         method: 'wallet_switchEthereumChain',
@@ -188,10 +187,9 @@ export class EthereumWalletService {
           params: [
             {
               chainId: TARGET_CHAIN_ID_HEX,
-              chainName: 'Sepolia',
-              nativeCurrency: { name: 'Sepolia Ether', symbol: 'ETH', decimals: 18 },
-              rpcUrls: ['https://rpc.sepolia.org'],
-              blockExplorerUrls: ['https://sepolia.etherscan.io'],
+              chainName,
+              nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+              rpcUrls: [rpcUrl],
             },
           ],
         });
@@ -213,8 +211,12 @@ export class EthereumWalletService {
     this.balanceWeiHex.set(hex);
   }
 
-  /** Abre un faucet en nueva pestaña (el usuario solicita ETH de prueba allí). */
-  openSepoliaFaucet(): void {
-    window.open(SEPOLIA_FAUCET_URL, '_blank', 'noopener,noreferrer');
+  /** Abre un faucet en nueva pestaña si `environment.testnetFaucetUrl` está definido. */
+  openTestnetFaucet(): void {
+    const url = environment.testnetFaucetUrl?.trim();
+    if (!url) {
+      return;
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
   }
 }

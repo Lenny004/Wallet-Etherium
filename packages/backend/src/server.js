@@ -33,8 +33,8 @@ const frontendOrigin = process.env.FRONTEND_ORIGIN ?? 'http://localhost:4200';
 const siweDomain = process.env.SIWE_DOMAIN ?? 'localhost:4200';
 // URI declarada dentro del mensaje SIWE.
 const siweUri = process.env.SIWE_URI ?? 'http://localhost:4200';
-// Chain ID de la red esperada durante autenticación SIWE.
-const siweChainId = Number(process.env.SIWE_CHAIN_ID ?? 11155111);
+// Chain ID de la red esperada durante autenticación SIWE (debe coincidir con `packages/frontend` y MetaMask).
+const siweChainId = Number(process.env.SIWE_CHAIN_ID ?? 1337);
 
 if (!jwtSecret || jwtSecret.length < 16) {
   throw new Error('JWT_SECRET must be defined and at least 16 characters long.');

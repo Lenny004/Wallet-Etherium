@@ -19,9 +19,11 @@
       <div>
         <small>
           @if (auth.isWalletSiweSession()) {
-            Liquidez disponible (Sepolia · MetaMask)
+            Liquidez disponible ({{ networkName }} · MetaMask)
+          } @else if (monitoredOnChainAddress()) {
+            Liquidez visible en {{ networkName }} (solo lectura)
           } @else {
-            Red de pruebas Sepolia (sin MetaMask en esta sesión)
+            Red {{ networkName }} (sin dirección en perfil)
           }
         </small>
         <div class="balance-value">
@@ -34,11 +36,21 @@
         </div>
         <p class="balance-sub">
           @if (displayEth() !== null) {
-            Saldo on-chain en Sepolia vía MetaMask
+            @if (auth.isWalletSiweSession() && metaMaskBalanceEth() !== null) {
+              Saldo on-chain en {{ networkName }} vía MetaMask
+            } @else {
+              Saldo en {{ networkName }} consultado sin firmar (explorador o RPC local)
+            }
+          } @else if (monitoredOnChainAddress()) {
+            @if (readOnlyBalanceLoading()) {
+              Consultando saldo en {{ networkName }}…
+            } @else {
+              No se pudo leer el saldo on-chain. Comprueba que Ganache esté en marcha y el proxy en `ng serve`.
+            }
           } @else if (auth.isWalletSiweSession()) {
-            Conecta MetaMask desde el panel lateral para ver tu saldo real
+            Conecta MetaMask desde el panel lateral para ver saldo firmado en vivo
           } @else {
-            Inicia sesión con MetaMask (SIWE) para ver saldo on-chain en Sepolia
+            Tu perfil no tiene una dirección 0x…; el backend no puede enlazar una cuenta en {{ networkName }}.
           }
         </p>
       </div>
@@ -49,7 +61,7 @@
     </div>
 
     <div class="balance-actions">
-      @if (auth.isWalletSiweSession()) {
+      @if (auth.isWalletSiweSession() && showFaucet) {
         <button type="button" class="btn btn-primary" (click)="onFaucetClick()">
           <span class="material-symbols-outlined">add_circle</span>
           Solicitar Faucet
@@ -87,26 +99,28 @@
   <article class="transactions-card">
     <div class="transactions-header">
       <h3>Transacciones recientes</h3>
-      <button
-        type="button"
-        [disabled]="!wallet.connectedAddress() || !wallet.isTargetChain()"
-        (click)="openAddressOnExplorer()"
-      >
-        Ver todo en el explorador
-      </button>
+      @if (showExplorer) {
+        <button
+          type="button"
+          [disabled]="!monitoredOnChainAddress()"
+          (click)="openAddressOnExplorer()"
+        >
+          Ver todo en el explorador
+        </button>
+      }
     </div>
 
     <div class="transactions-list">
       @if (transactionsLoading()) {
-        <p class="transactions-hint">Cargando transacciones desde Sepolia…</p>
+        <p class="transactions-hint">Cargando transacciones desde {{ networkName }}…</p>
       } @else if (transactionsError()) {
         <p class="transactions-error">{{ transactionsError() }}</p>
       } @else if (transactions().length === 0) {
         <p class="transactions-hint">
-          @if (wallet.connectedAddress() && wallet.isTargetChain()) {
-            No hay transacciones en Sepolia para esta cuenta todavía.
+          @if (monitoredOnChainAddress()) {
+            No hay transacciones en {{ networkName }} para esta cuenta todavía.
           } @else {
-            Conecta MetaMask en Sepolia para ver tu historial on-chain.
+            Tu perfil no tiene una dirección Ethereum (0x…). Con el registro o el login por cofre queda vinculada y aquí verás saldo e historial en {{ networkName }}.
           }
         </p>
       } @else {

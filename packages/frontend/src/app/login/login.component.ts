@@ -16,8 +16,10 @@ type LoginTab = 'vault' | 'identity' | 'siwe';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LoginComponent {
-  /** chainId de la testnet configurada (p. ej. Sepolia). */
+  /** chainId configurado (debe coincidir con el backend `SIWE_CHAIN_ID`). */
   protected readonly chainId = environment.chainId;
+  /** Etiqueta de red en UI (p. ej. Ganache Local). */
+  protected readonly networkName = environment.networkDisplayName;
   private readonly formBuilder = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
@@ -119,7 +121,7 @@ export class LoginComponent {
             await this.wallet.ensureTargetChain();
             await this.wallet.refreshChainAndBalance();
           } catch {
-            this.notify.toastInfo('Acepta el cambio a Sepolia en MetaMask para operar en la testnet.');
+            this.notify.toastInfo(`Acepta el cambio a ${environment.networkDisplayName} en MetaMask para operar en esa red.`);
           } finally {
             this.siweLoading = false;
           }
