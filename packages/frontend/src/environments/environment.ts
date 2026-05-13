@@ -4,9 +4,9 @@ export const environment = {
 
   /**
    * Debe coincidir con el "Network ID" / chain id en Ganache y con `SIWE_CHAIN_ID` del backend.
-   * Ganache suele usar 1337; si tu instancia muestra otro valor (p. ej. 5777), cámbialo aquí y en `.env`.
+   * Ganache Desktop (Quickstart) suele usar 5777; Ganache CLI a veces 1337: debe coincidir con `SIWE_CHAIN_ID` y MetaMask.
    */
-  chainId: 1337,
+  chainId: 5777,
 
   /** Etiqueta visible en login y dashboard. */
   networkDisplayName: 'Ganache Local',

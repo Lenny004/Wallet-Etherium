@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { BlockchainEvents, createDomainEvent } from '../../../events/domain-events.js';
-import { validateContract } from '../../../../contracts/validate-contract.js';
+import { runMoneyTransferPreExecutionValidation } from '../../../../transaction-validation/orchestrator.js';
 
 export class ValidateAndExecuteTransferUseCase {
   /**
@@ -20,27 +20,28 @@ export class ValidateAndExecuteTransferUseCase {
       throw new Error('Transferencia no encontrada.');
     }
 
-    const contractValidation = validateContract({
+    const validation = runMoneyTransferPreExecutionValidation({
       contractName: command.contractName,
-      operation: 'money-transfer',
-      payload: {
-        fromAddress: transfer.fromAddress,
-        toAddress: transfer.toAddress,
-        amountEth: transfer.amountEth
-      }
+      transfer
     });
 
-    if (!contractValidation.ok) {
+    if (!validation.ok) {
       this.transferRepository.update(transfer.transferId, { status: 'rejected' });
+      const eventType =
+        validation.failedStage === 'POLICY'
+          ? BlockchainEvents.POLICY_VALIDATION_FAILED
+          : BlockchainEvents.CONTRACT_VALIDATION_FAILED;
       await this.eventBus.publish(
-        createDomainEvent(BlockchainEvents.CONTRACT_VALIDATION_FAILED, {
+        createDomainEvent(eventType, {
           module: 'Enviar_dinero',
           operation: 'money-transfer',
           transferId: transfer.transferId,
-          reason: contractValidation.reason
+          failedStage: validation.failedStage,
+          codes: validation.codes,
+          reason: validation.message
         })
       );
-      throw new Error(contractValidation.reason);
+      throw new Error(validation.message ?? 'Validación rechazada.');
     }
 
     const validated = this.transferRepository.update(transfer.transferId, { status: 'validated' });

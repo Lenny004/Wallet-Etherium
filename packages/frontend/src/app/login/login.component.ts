@@ -59,7 +59,9 @@ export class LoginComponent {
       return;
     }
 
-    const { walletAddress, seedPhrase } = this.vaultForm.getRawValue();
+    const raw = this.vaultForm.getRawValue();
+    const walletAddress = raw.walletAddress?.trim() ?? '';
+    const seedPhrase = raw.seedPhrase?.trim() ?? '';
     if (!walletAddress || !seedPhrase) {
       this.error = 'Completa todos los campos requeridos.';
       return;

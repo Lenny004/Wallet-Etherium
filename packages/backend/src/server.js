@@ -13,6 +13,7 @@ import jwt from 'jsonwebtoken';
 import { Wallet, verifyMessage, getAddress } from 'ethers';
 import { z } from 'zod';
 import { createBlockchainModule } from './blockchain/framework/create-blockchain-module.js';
+import { ensureGanacheDevUser } from './bootstrap-ganache-dev-user.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,7 +35,7 @@ const siweDomain = process.env.SIWE_DOMAIN ?? 'localhost:4200';
 // URI declarada dentro del mensaje SIWE.
 const siweUri = process.env.SIWE_URI ?? 'http://localhost:4200';
 // Chain ID de la red esperada durante autenticación SIWE (debe coincidir con `packages/frontend` y MetaMask).
-const siweChainId = Number(process.env.SIWE_CHAIN_ID ?? 1337);
+const siweChainId = Number(process.env.SIWE_CHAIN_ID ?? 5777);
 
 if (!jwtSecret || jwtSecret.length < 16) {
   throw new Error('JWT_SECRET must be defined and at least 16 characters long.');
@@ -525,6 +526,7 @@ app.use((error, req, res, next) => {
 });
 
 await ensureStore();
+await ensureGanacheDevUser(readStore, writeStore);
 
 server.listen(port, () => {
   console.log(`Wallet backend listening on http://localhost:${port}`);

@@ -21,7 +21,7 @@ Monorepo para autenticación Web3 con registro e inicio de sesión completos: **
 
 | Paquete | Rol |
 |--------|-----|
-| `packages/frontend` | **Angular 21** (~21.2): login, registro, credenciales, dashboard (rutas hijas), módulos Subir PDF y Enviar dinero, guardas de ruta, interceptor JWT, servicio WebSocket de eventos (`environment`: `apiUrl`, `wsUrl`, red local **Ganache** por defecto `chainId` **1337**, proxy JSON-RPC `/ganache-rpc`). Sepolia u otra red: reconfigurar `environment.ts` y `SIWE_CHAIN_ID`. |
+| `packages/frontend` | **Angular 21** (~21.2): login, registro, credenciales, dashboard (rutas hijas), módulos Subir PDF y Enviar dinero, guardas de ruta, interceptor JWT, servicio WebSocket de eventos (`environment`: `apiUrl`, `wsUrl`, red local **Ganache** por defecto `chainId` **5777** (Quickstart), proxy JSON-RPC `/ganache-rpc`). Sepolia u otra red: reconfigurar `environment.ts` y `SIWE_CHAIN_ID`. |
 | `packages/backend` | **Node.js 20+**, **Express 5**, API REST bajo `/api`, validación con **Zod**, JWT, **helmet**, CORS por origen, rate limiting en auth, **WebSocket** en `/ws/events`. Persistencia de desarrollo: `packages/backend/data/users.json` (usuarios y nonces SIWE). |
 | `packages/backend/src/blockchain` | Capa blockchain modular: **Clean Architecture**, **EDA** (bus en memoria), casos de uso y controladores por módulo. |
 | `packages/backend/src/contracts` | Validación previa de operaciones (`validate-contract.js`) antes de tokenizar, publicar a “mainnet” (simulado) o transferir. |
@@ -100,9 +100,10 @@ Copiar `packages/backend/.env.example` a `packages/backend/.env`:
 - `JWT_SECRET` (obligatoria, mínimo 16 caracteres)
 - `JWT_EXPIRES_IN` (por defecto `1h`)
 - `FRONTEND_ORIGIN` (por defecto `http://localhost:4200`)
-- `SIWE_DOMAIN`, `SIWE_URI`, `SIWE_CHAIN_ID` (por defecto **1337** alineado con Ganache local; debe coincidir con el Network ID de Ganache y con `chainId` del frontend)
+- `SIWE_DOMAIN`, `SIWE_URI`, `SIWE_CHAIN_ID` (por defecto **5777**, típico de Ganache Desktop Quickstart; debe coincidir con el Network ID de Ganache y con `chainId` del frontend)
+- `GANACHE_MNEMONIC` (opcional): la frase de 12 palabras de Ganache; al arrancar el backend se crea un usuario de prueba con la cuenta HD `m/44'/60'/0'/0/<GANACHE_ACCOUNT_INDEX>` (por defecto índice **0**), de modo que puedes hacer **login con la dirección de esa cuenta + la misma frase**. No commitees esta variable con una frase real.
 
-**Ganache local:** arranca Ganache (RPC típico `http://127.0.0.1:7545`). Si tu puerto es **8545**, actualiza `packages/frontend/proxy.conf.json`, `environment.chainRpcUrl` y la URL en MetaMask. Si Ganache muestra otro **Network ID** (p. ej. 5777), iguala `SIWE_CHAIN_ID`, `environment.chainId` y la red en MetaMask.
+**Ganache local:** arranca Ganache (RPC típico `http://127.0.0.1:7545`). Si tu puerto es **8545**, actualiza `packages/frontend/proxy.conf.json`, `environment.chainRpcUrl` y la URL en MetaMask. Si tu Ganache usa otro **Network ID** (p. ej. 1337 en CLI), iguala `SIWE_CHAIN_ID`, `environment.chainId` y la red en MetaMask.
 
 ## Scripts útiles (raíz)
 

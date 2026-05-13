@@ -16,7 +16,8 @@ export function registerBlockchainConsumers({ eventBus, validateAndExecuteTransf
     BlockchainEvents.MONEY_TRANSFER_REQUESTED,
     BlockchainEvents.MONEY_TRANSFER_VALIDATED,
     BlockchainEvents.MONEY_TRANSFER_COMPLETED,
-    BlockchainEvents.CONTRACT_VALIDATION_FAILED
+    BlockchainEvents.CONTRACT_VALIDATION_FAILED,
+    BlockchainEvents.POLICY_VALIDATION_FAILED
   ];
 
   for (const eventType of webSocketForwardingEvents) {
@@ -24,9 +25,14 @@ export function registerBlockchainConsumers({ eventBus, validateAndExecuteTransf
   }
 
   eventBus.subscribe(BlockchainEvents.MONEY_TRANSFER_REQUESTED, async (event) => {
-    await validateAndExecuteTransferUseCase.execute({
-      transferId: String(event.payload.transferId),
-      contractName: String(event.payload.contractName)
-    });
+    try {
+      await validateAndExecuteTransferUseCase.execute({
+        transferId: String(event.payload.transferId),
+        contractName: String(event.payload.contractName)
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('[MONEY_TRANSFER_REQUESTED]', message);
+    }
   });
 }

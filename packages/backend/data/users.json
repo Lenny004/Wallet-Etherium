@@ -47,6 +47,18 @@
       "vc": "{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],\"type\":[\"VerifiableCredential\",\"WalletCredential\"],\"issuer\":\"did:ethr:0xcB66dD0179f0Ecd0c7f3060386324A4Fe08c13Bc\",\"credentialSubject\":{\"id\":\"did:ethr:0xcB66dD0179f0Ecd0c7f3060386324A4Fe08c13Bc\",\"walletAddress\":\"0xcB66dD0179f0Ecd0c7f3060386324A4Fe08c13Bc\",\"nombre\":\"Marcos\",\"apellido\":\"Antonio\",\"rol\":\"PROGRAMADOR\",\"compania\":\"UFG\"}}",
       "seedHash": "$2a$12$zT9NjXHFebCBKJ1ZkWp0DOzBOpcJ.tX6.RIoFg03O2soOS639jAw6",
       "createdAt": "2026-04-26T20:30:39.921Z"
+    },
+    {
+      "id": "90000000",
+      "nombre": "Ganache",
+      "apellido": "Dev",
+      "rol": "developer",
+      "compania": "Local",
+      "walletAddress": "0x47C1AfD11db25bFA35525a4d0C3C2EB945c41De0",
+      "did": "did:ethr:0x47C1AfD11db25bFA35525a4d0C3C2EB945c41De0",
+      "vc": "{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],\"type\":[\"VerifiableCredential\",\"WalletCredential\"],\"issuer\":\"did:ethr:0x47C1AfD11db25bFA35525a4d0C3C2EB945c41De0\",\"credentialSubject\":{\"id\":\"did:ethr:0x47C1AfD11db25bFA35525a4d0C3C2EB945c41De0\",\"walletAddress\":\"0x47C1AfD11db25bFA35525a4d0C3C2EB945c41De0\",\"nombre\":\"Ganache\",\"apellido\":\"Dev\",\"rol\":\"developer\",\"compania\":\"Local\"}}",
+      "seedHash": "$2a$12$XJdpTdjaLz1Z/qf3sOm7Ke2Wsj0XL8gTAJL7ATSz7m.mE9ZYVi0wm",
+      "createdAt": "2026-05-13T22:12:52.931Z"
     }
   ],
   "siweNonces": []

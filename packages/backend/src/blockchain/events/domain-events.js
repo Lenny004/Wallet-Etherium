@@ -8,7 +8,8 @@ export const BlockchainEvents = Object.freeze({
   MONEY_TRANSFER_REQUESTED: 'enviar_dinero.money_transfer_requested',
   MONEY_TRANSFER_VALIDATED: 'enviar_dinero.money_transfer_validated',
   MONEY_TRANSFER_COMPLETED: 'enviar_dinero.money_transfer_completed',
-  CONTRACT_VALIDATION_FAILED: 'shared.contract_validation_failed'
+  CONTRACT_VALIDATION_FAILED: 'shared.contract_validation_failed',
+  POLICY_VALIDATION_FAILED: 'shared.policy_validation_failed'
 });
 
 /**

@@ -2,7 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { AuthService } from '../auth/auth.service';
 
-/** chainId de `environment` en hex (p. ej. Ganache 1337 → 0x539). */
+/** chainId de `environment` en hex (p. ej. Ganache 5777 → 0x1681). */
 export const TARGET_CHAIN_ID_HEX = `0x${environment.chainId.toString(16)}` as const;
 
 type Eip1193Request = { method: string; params?: unknown[] };
